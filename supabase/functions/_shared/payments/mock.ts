@@ -1,7 +1,12 @@
 import { z } from "npm:zod@4";
 
 import { HttpError } from "../http.ts";
-import type { PaymentProvider, VerifiedPaymentEvent } from "./types.ts";
+import type {
+  CreateCheckoutInput,
+  CreateCheckoutResult,
+  PaymentProvider,
+  VerifiedPaymentEvent,
+} from "./types.ts";
 
 const mockEventSchema = z.object({
   eventId: z.string().min(1).max(200),
@@ -108,6 +113,20 @@ function toVerifiedEvent(event: MockEvent): VerifiedPaymentEvent {
 
 export const mockPaymentProvider: PaymentProvider = {
   name: "mock",
+
+  async createCheckout(
+    input: CreateCheckoutInput,
+  ): Promise<CreateCheckoutResult> {
+    const redirectUrl = new URL(input.successUrl);
+    redirectUrl.pathname = "/checkout/mock";
+    redirectUrl.searchParams.set("order", input.orderNumber);
+    redirectUrl.searchParams.set("orderId", input.orderId);
+
+    return {
+      checkoutId: `mock_${input.orderId}`,
+      redirectUrl: redirectUrl.toString(),
+    };
+  },
 
   async verifyWebhook(
     rawBody: string,

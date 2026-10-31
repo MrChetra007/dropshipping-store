@@ -2,11 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { CART_COOKIE, isCartId } from "@/lib/cart";
-import { getPaymentProvider } from "@/lib/payments";
-import type { CreateCheckoutResult } from "@/lib/payments/types";
-import { siteUrl } from "@/lib/site";
 import { callEdgeFunction, EdgeFunctionError } from "@/lib/supabase/functions";
-import type { CheckoutContext } from "@/types/order";
+import type { CheckoutContext, StartPaymentResult } from "@/types/order";
 
 const addressSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -82,70 +79,25 @@ export async function POST(request: NextRequest) {
     return errorResponse(error, "Could not create your order");
   }
 
-  const provider = getPaymentProvider();
-  const successUrl = `${siteUrl()}/checkout/success?order=${encodeURIComponent(
-    context.orderNumber,
-  )}&token=${encodeURIComponent(context.accessToken)}`;
-  const cancelUrl = `${siteUrl()}/cart`;
-
-  let checkout: CreateCheckoutResult;
-
+  // The edge function selects the payment provider, builds the success/cancel
+  // URLs from SITE_URL, stores the provider checkout id, and clears the cart.
+  // No payment provider secret is read by Next.js.
   try {
-    checkout = await provider.createCheckout({
-      orderId: context.orderId,
-      orderNumber: context.orderNumber,
-      email: context.email,
-      currency: context.currency,
-      amountCents: context.totalCents,
-      items: context.items,
-      shippingCents: context.shippingCents,
-      successUrl,
-      cancelUrl,
-    });
-  } catch (error) {
-    console.error("Payment checkout creation failed:", error);
-
-    try {
-      await callEdgeFunction("store-api", {
-        method: "POST",
-        query: { action: "checkout.abort" },
-        body: {
-          orderId: context.orderId,
-          accessToken: context.accessToken,
-        },
-      });
-    } catch (abortError) {
-      console.error("Could not abort pending order:", abortError);
-    }
-
-    return NextResponse.json(
-      { error: "Could not start the payment. Please try again." },
-      { status: 502 },
-    );
-  }
-
-  try {
-    await callEdgeFunction("store-api", {
+    const payment = await callEdgeFunction<StartPaymentResult>("store-api", {
       method: "POST",
-      query: { action: "checkout.attachPayment" },
+      query: { action: "checkout.startPayment" },
       body: {
         orderId: context.orderId,
         accessToken: context.accessToken,
         cartId,
-        provider: provider.name,
-        checkoutId: checkout.checkoutId,
       },
     });
-  } catch (error) {
-    console.error("Could not attach payment to order:", error);
-    return NextResponse.json(
-      { error: "Could not start the payment. Please try again." },
-      { status: 502 },
-    );
-  }
 
-  return NextResponse.json({
-    redirectUrl: checkout.redirectUrl,
-    orderNumber: context.orderNumber,
-  });
+    return NextResponse.json({
+      redirectUrl: payment.redirectUrl,
+      orderNumber: payment.orderNumber,
+    });
+  } catch (error) {
+    return errorResponse(error, "Could not start the payment");
+  }
 }

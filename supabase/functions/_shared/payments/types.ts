@@ -35,6 +35,7 @@ export type VerifiedPaymentEvent =
 
 export interface PaymentProvider {
   name: string;
+  createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
   verifyWebhook(
     rawBody: string,
     headers: Headers,

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { isCronAuthorized } from "@/lib/cron";
-import { env } from "@/lib/env";
 import {
   callEdgeFunction,
   EdgeFunctionError,
@@ -15,17 +13,14 @@ type TrackingResult = {
   results: Array<Record<string, unknown>>;
 };
 
+/**
+ * Forwards the caller's bearer token to the edge worker. The worker verifies
+ * CRON_SECRET itself, so Next.js never reads or stores the secret.
+ */
 export async function GET(request: Request) {
-  const secret = env.CRON_SECRET;
+  const authorization = request.headers.get("authorization");
 
-  if (!secret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET is not configured" },
-      { status: 500 },
-    );
-  }
-
-  if (!isCronAuthorized(request, secret)) {
+  if (!authorization) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -33,7 +28,7 @@ export async function GET(request: Request) {
     const result = await callEdgeFunction<TrackingResult>("tracking-sync", {
       method: "POST",
       body: {},
-      accessToken: secret,
+      authorization,
     });
 
     return NextResponse.json(result);

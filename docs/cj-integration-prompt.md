@@ -64,7 +64,6 @@ Postgres (RLS for public reads, service role for writes)
 | Shared UI | `src/components/` |
 | Storefront data access (anon) | `src/lib/catalog.ts`, `src/lib/cart.ts`, `src/lib/orders.ts` |
 | Edge function caller | `src/lib/supabase/functions.ts` |
-| Cron auth helper | `src/lib/cron.ts` |
 | DB types | `src/types/database.ts` |
 | Full reset schema | `schema.sql` |
 | Non-destructive migrations | `supabase/migrations/` |
@@ -75,7 +74,8 @@ Postgres (RLS for public reads, service role for writes)
 | Tracking worker logic | `supabase/functions/_shared/tracking/sync.ts` |
 | Stock sync worker logic | `supabase/functions/_shared/stock/sync.ts` |
 | Emails (Resend) | `supabase/functions/_shared/email.ts` |
-| Payment abstraction | `supabase/functions/_shared/payments/` and `src/lib/payments/` |
+| Payment abstraction | `supabase/functions/_shared/payments/` (edge only) |
+| Site URL helper | `supabase/functions/_shared/site.ts` |
 | Edge function entrypoints | `supabase/functions/*/index.ts` |
 
 ---
@@ -117,10 +117,10 @@ signed out.
 | `cart.update` | POST | Change quantity |
 | `cart.remove` | POST | Remove a variant |
 | `checkout.create` | POST | Validate cart and create a `pending_payment` order |
-| `checkout.attachPayment` | POST | Store provider checkout id on the order |
-| `checkout.abort` | POST | Cancel an unpaid order |
+| `checkout.startPayment` | POST | Select the provider, create checkout, store provider id, clear cart |
 | `order.preview` | GET | Customer order lookup by number + guest token |
 | `payment.webhook` | POST | Verify and process a payment event |
+| `payment.mockPay` | POST | Dev-only: sign and process a mock `payment.paid` event |
 
 ### Workers
 
@@ -141,11 +141,11 @@ They verify `CRON_SECRET` themselves.
 | Route | Purpose |
 | --- | --- |
 | `POST /api/cart` | Cart add/update/remove; `GET` loads the cart |
-| `POST /api/checkout` | Calls `store-api` `checkout.create`, then starts the payment provider |
+| `POST /api/checkout` | Calls `store-api` `checkout.create`, then `checkout.startPayment` |
 | `POST /api/webhooks/payment` | Forwards the **raw body** and signature headers to `store-api` `payment.webhook` |
-| `GET /api/cron/fulfill` | Calls `fulfill-order` with `CRON_SECRET` |
-| `GET /api/cron/tracking` | Calls `tracking-sync` with `CRON_SECRET` |
-| `GET /api/cron/stock` | Calls `stock-sync` with `CRON_SECRET` |
+| `GET /api/cron/fulfill` | Forwards the caller's bearer to `fulfill-order` |
+| `GET /api/cron/tracking` | Forwards the caller's bearer to `tracking-sync` |
+| `GET /api/cron/stock` | Forwards the caller's bearer to `stock-sync` |
 
 `vercel.json` schedules:
 
@@ -155,7 +155,11 @@ They verify `CRON_SECRET` themselves.
 { "path": "/api/cron/stock",    "schedule": "0 */6 * * *" }
 ```
 
-Cron routes return `401` without `Authorization: Bearer <CRON_SECRET>`.
+Cron routes return `401` without an `Authorization` header. They do not read
+`CRON_SECRET`; the worker function verifies the forwarded bearer itself. When
+Vercel Cron invokes them, `CRON_SECRET` must be set in the Vercel project's
+server-side environment so Vercel sends the header. To keep the secret only in
+Supabase, schedule the workers with `pg_cron` + `pg_net` instead.
 
 ---
 
@@ -315,11 +319,17 @@ Default: multiplier `2.5`, round_to `0.99`.
      selling price (the order is still allowed, but admin sees it)
    - adds the public `order_created` event
    - returns the order id, order number, guest `access_token`, and totals
-5. The Next route starts the payment provider (`mock` today), stores
-   `payment_provider` and `provider_checkout_id`, and redirects the customer.
+5. The Next route calls `store-api` `checkout.startPayment`. The edge function:
+   - selects the provider from the `PAYMENT_PROVIDER` function secret
+   - builds success/cancel URLs from the `SITE_URL` function secret
+   - calls `provider.createCheckout(...)`
+   - stores `payment_provider` and `provider_checkout_id`
+   - clears the cart items
+   - returns the provider redirect URL to Next.js
 
-If any step after order creation fails, the order is deleted so no orphan
-`pending_payment` order remains.
+If the provider cannot start a checkout, the edge function deletes the pending
+order so no orphan `pending_payment` row remains. The cart is cleared only after
+the checkout is attached, so a failed retry keeps the cart.
 
 ### 7.5 Payment webhook
 
@@ -357,7 +367,9 @@ Mock provider:
 - `PAYMENT_PROVIDER=mock`
 - signature header `x-mock-signature` = HMAC-SHA256 hex of the raw body using
   `PAYMENT_WEBHOOK_SECRET`
-- the dev-only `/checkout/mock` page signs and posts the event
+- the dev-only `/checkout/mock` page calls `store-api` `payment.mockPay`; the
+  edge function loads the order total, signs the event, and runs it through the
+  real `payment.webhook` verification path. Next.js never sees the secret.
 
 ### 7.6 Fulfillment to CJ
 
@@ -483,9 +495,22 @@ EMAIL_FROM
 SITE_URL
 ```
 
-Next.js `.env.local` only needs public Supabase values plus
-`PAYMENT_WEBHOOK_SECRET` (same value as the function secret) and `CRON_SECRET`
-(same value as the function secret).
+Next.js `.env.local` holds public values only:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SITE_URL
+```
+
+Payment provider selection, mock webhook signing, and cron authentication all
+run in Supabase, so `PAYMENT_PROVIDER`, `PAYMENT_WEBHOOK_SECRET`, and
+`CRON_SECRET` are never read by Next.js.
+
+Cron routes forward the caller's `Authorization` header to the workers. When
+Vercel Cron calls them, `CRON_SECRET` must be set in the Vercel project's
+server-side environment so Vercel sends the bearer. To keep it only in
+Supabase, schedule the workers with `pg_cron` + `pg_net`.
 
 Deploy:
 
@@ -558,8 +583,8 @@ update public.profiles set role = 'admin' where email = 'you@example.com';
   never accept prices from the request.
 - **New background job:** add a shared module under
   `supabase/functions/_shared/`, a worker entrypoint with `requireCronSecret`,
-  a Next route with `isCronAuthorized`, a `vercel.json` entry, and
-  `verify_jwt = false` in `supabase/config.toml`.
+  a Next route that forwards the caller's `Authorization` header, a
+  `vercel.json` entry, and `verify_jwt = false` in `supabase/config.toml`.
 - **Schema change:** update `schema.sql` for fresh installs **and** add a
   non-destructive migration for existing databases.
 - **Money:** store and compare integer cents; use `money.ts` helpers at the

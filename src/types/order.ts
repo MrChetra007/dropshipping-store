@@ -16,6 +16,13 @@ export type CheckoutContext = {
   }>;
 };
 
+export type StartPaymentResult = {
+  provider: string;
+  checkoutId: string;
+  redirectUrl: string;
+  orderNumber: string;
+};
+
 export type OrderPreview = {
   orderNumber: string;
   status: string;

@@ -10,6 +10,8 @@ export type EdgeFunctionOptions = {
   query?: Record<string, QueryValue>;
   body?: unknown;
   accessToken?: string;
+  /** Full Authorization header value, used to forward cron/worker credentials. */
+  authorization?: string;
   headers?: Record<string, string>;
 };
 
@@ -84,11 +86,13 @@ export async function callEdgeFunction<T>(
   options: EdgeFunctionOptions = {},
 ): Promise<T> {
   const url = functionUrl(name, options.query);
-  const accessToken = await resolveAccessToken(options.accessToken);
+  const authorization =
+    options.authorization ??
+    `Bearer ${await resolveAccessToken(options.accessToken)}`;
 
   const headers: Record<string, string> = {
     apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${accessToken}`,
+    Authorization: authorization,
     ...options.headers,
   };
 

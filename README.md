@@ -37,8 +37,9 @@ is injected by the Supabase runtime.
   client.
 - `store-api` — guest/customer actions: cart (`cart.get`, `cart.add`,
   `cart.update`, `cart.remove`), checkout (`checkout.create`,
-  `checkout.attachPayment`, `checkout.abort`), guest order preview
-  (`order.preview`), and payment webhook processing (`payment.webhook`).
+  `checkout.startPayment`), guest order preview (`order.preview`), payment
+  webhook processing (`payment.webhook`), and the dev-only mock payment helper
+  (`payment.mockPay`).
 - `fulfill-order` — cron/internal worker that claims queued `supplier_orders`
   and submits them to CJ. It authenticates with `Authorization: Bearer
   CRON_SECRET` instead of a Supabase JWT (`verify_jwt = false` in
@@ -62,6 +63,7 @@ npx supabase functions deploy admin-api
 npx supabase functions deploy store-api
 npx supabase functions deploy fulfill-order
 npx supabase functions deploy tracking-sync
+npx supabase functions deploy stock-sync
 ```
 
 Set the function secrets for deployed functions:
@@ -79,11 +81,20 @@ npx supabase secrets set \
 ```
 
 For local `supabase start`, put the same values in
-`supabase/functions/.env`. The Next.js `.env.local` needs
-`PAYMENT_WEBHOOK_SECRET` with the **same** value so the dev-only mock payment
-button can sign a webhook the edge function accepts. It also needs
-`CRON_SECRET` with the same value as the function secret so `/api/cron/fulfill`
-and `/api/cron/tracking` can call the workers.
+`supabase/functions/.env`.
+
+The Next.js environment holds **only** public values:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SITE_URL
+```
+
+`PAYMENT_PROVIDER`, `PAYMENT_WEBHOOK_SECRET`, `PAYMENT_API_KEY`, and
+`CRON_SECRET` are Supabase function secrets only. Checkout, mock webhook
+signing, and cron authentication all run inside `store-api` or the worker
+functions, so the Next.js app never reads those values.
 
 Cron functions reuse `CRON_SECRET`; payment and CJ webhooks verify the provider
 signature. No extra shared secret is needed.
@@ -246,10 +257,13 @@ Next.js routes only validate input and forward the request.
      `order_item_costs` from `supplier_variants.cost_price`,
   6. writes an internal `margin_guard` event when cost + allocated shipping is
      greater than or equal to the selling price.
-- The Next route then calls `getPaymentProvider().createCheckout(...)`, saves
-  `payment_provider` + `provider_checkout_id`, and clears the cart items. The
-  cart is cleared only after the payment checkout is attached, so a failed
-  retry does not lose the cart.
+- The Next route then calls `store-api` `checkout.startPayment`. The edge
+  function selects the provider, builds the success/cancel URLs from the
+  `SITE_URL` function secret, saves `payment_provider` +
+  `provider_checkout_id`, and clears the cart items. The cart is cleared only
+  after the payment checkout is attached, so a failed retry does not lose the
+  cart. If the provider cannot start a checkout, the edge function deletes the
+  pending order.
 - `mock` is the only provider until the owner makes the payment decision. It
   redirects to the dev-only `/checkout/mock` page.
 
@@ -286,14 +300,16 @@ byte-for-byte, with the provider signature headers to `store-api`
 `order_events` rows; the admin dashboard shows them in step 11. A duplicate
 payment id never sends a second email and never creates a second supplier order.
 
-The mock page has a **Simulate successful payment** button. It signs a
-deterministic `payment.paid` event (`eventId` and `paymentId` are derived from
-the order id) with the same secret and sends it through the real webhook path.
-Click it twice to test replay idempotency.
+The mock page has a **Simulate successful payment** button. It calls
+`store-api` `payment.mockPay`; the edge function loads the order total from the
+database, signs a deterministic `payment.paid` event (`eventId` and `paymentId`
+are derived from the order id) with `PAYMENT_WEBHOOK_SECRET`, and sends it
+through the real webhook verification path. Click it twice to test replay
+idempotency. The browser and Next.js never see the webhook secret.
 
 Test:
 
-1. Set `PAYMENT_WEBHOOK_SECRET` in both `.env.local` and the edge function
+1. Set `PAYMENT_PROVIDER=mock` and `PAYMENT_WEBHOOK_SECRET` as Supabase function
    secrets (local functions read `supabase/functions/.env`).
 2. Complete a checkout with the mock provider, then click **Simulate successful
    payment**. Confirm the success page shows `Payment confirmed`.
@@ -384,11 +400,14 @@ Admin:
 
 Cron:
 
-- `src/app/api/cron/fulfill/route.ts` requires `Authorization: Bearer
-  CRON_SECRET`, then calls the worker with the same secret.
-- `vercel.json` schedules it every 5 minutes. Vercel sends `CRON_SECRET` as the
-  bearer automatically when the env var is set. Tracking/stock cron entries are
-  added in steps 9 and 10.
+- `src/app/api/cron/fulfill/route.ts` forwards the caller's `Authorization`
+  header to the worker. It never reads `CRON_SECRET` itself.
+- `vercel.json` schedules it every 5 minutes. Vercel sends `Authorization:
+  Bearer <CRON_SECRET>` when `CRON_SECRET` is set in the Vercel project's
+  **server-side** environment. To keep the secret only in Supabase, schedule
+  `fulfill-order` with Supabase `pg_cron`/`pg_net` instead; the worker accepts
+  the same bearer either way. Tracking/stock cron entries are added in steps 9
+  and 10.
 - `fulfill-order` is deployed with `verify_jwt = false`, so the Supabase gateway
   does not reject the non-JWT cron secret. The function checks the secret itself.
 
@@ -399,8 +418,9 @@ npx supabase functions deploy fulfill-order
 npx supabase secrets set CRON_SECRET=... CJ_API_KEY=... --project-ref <your-project-ref>
 ```
 
-1. Put the same `CRON_SECRET` in `.env.local` (and `supabase/functions/.env`
-   for local functions).
+1. Set `CRON_SECRET` as a Supabase function secret (and in
+   `supabase/functions/.env` for local functions). Do not add it to
+   `.env.local`.
 2. Complete a checkout and simulate a successful payment (step 7).
 3. Check the supplier row:
 
@@ -441,8 +461,9 @@ date. The Next.js app only calls it through a protected cron route.
 
 Flow:
 
-1. `/api/cron/tracking` requires `Authorization: Bearer CRON_SECRET`, then calls
-   `tracking-sync` with the same secret. `vercel.json` runs it every 3 hours.
+1. `/api/cron/tracking` forwards the caller's `Authorization` header to
+   `tracking-sync`, which verifies `CRON_SECRET` itself. `vercel.json` runs it
+   every 3 hours.
 2. The worker loads `supplier_orders` in `submitted`, `confirmed`, or `shipped`
    with a CJ order id.
 3. For each row it calls CJ `getOrderDetail` and, when a tracking number exists,
@@ -545,8 +566,9 @@ edge function.
 
 Flow:
 
-1. `/api/cron/stock` requires `Authorization: Bearer CRON_SECRET`, then calls
-   `stock-sync` with the same secret. `vercel.json` schedules it at `0 */6 * * *`.
+1. `/api/cron/stock` forwards the caller's `Authorization` header to
+   `stock-sync`, which verifies `CRON_SECRET` itself. `vercel.json` schedules it
+   at `0 */6 * * *`.
 2. The worker groups imported CJ variants by `supplier_product_id` and syncs the
    40 products that have waited longest since `supplier_variants.last_synced_at`
    (`null` first). A larger catalog is covered over several runs.

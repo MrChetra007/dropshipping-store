@@ -10,16 +10,18 @@ import {
   updateCartItem,
 } from "./cart.ts";
 import {
-  abortOrder as abortOrderAction,
-  abortOrderSchema,
-  attachPayment,
-  attachPaymentSchema,
   createOrder,
   createOrderSchema,
   previewOrder,
   previewOrderSchema,
+  startPayment,
+  startPaymentSchema,
 } from "./checkout.ts";
-import { processPaymentWebhook } from "./payment-webhook.ts";
+import {
+  mockPaySchema,
+  processPaymentWebhook,
+  simulateMockPayment,
+} from "./payment-webhook.ts";
 
 const cartIdSchema = z.string().uuid();
 
@@ -160,14 +162,14 @@ Deno.serve(async (request) => {
       return json(await createOrder(admin, input, userId));
     }
 
-    if (request.method === "POST" && action === "checkout.attachPayment") {
-      const input = parse(attachPaymentSchema, await readJson(request));
-      return json(await attachPayment(admin, input));
+    if (request.method === "POST" && action === "checkout.startPayment") {
+      const input = parse(startPaymentSchema, await readJson(request));
+      return json(await startPayment(admin, input));
     }
 
-    if (request.method === "POST" && action === "checkout.abort") {
-      const input = parse(abortOrderSchema, await readJson(request));
-      return json(await abortOrderAction(admin, input));
+    if (request.method === "POST" && action === "payment.mockPay") {
+      const input = parse(mockPaySchema, await readJson(request));
+      return json(await simulateMockPayment(admin, input));
     }
 
     if (request.method === "GET" && action === "order.preview") {

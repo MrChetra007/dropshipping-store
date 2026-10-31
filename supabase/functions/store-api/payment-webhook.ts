@@ -1,8 +1,11 @@
+import { z } from "npm:zod@4";
+
 import { sendOrderConfirmationEmail } from "../_shared/email.ts";
 import { triggerFulfillment, waitUntil } from "../_shared/fulfillment-trigger.ts";
 import { HttpError } from "../_shared/http.ts";
-import { centsToAmount } from "../_shared/money.ts";
+import { centsToAmount, toCents } from "../_shared/money.ts";
 import { getPaymentProvider } from "../_shared/payments/index.ts";
+import { signMockWebhook } from "../_shared/payments/mock.ts";
 import type { VerifiedPaymentEvent } from "../_shared/payments/types.ts";
 import type { createAdminClient } from "../_shared/supabase.ts";
 
@@ -248,4 +251,66 @@ export async function processPaymentWebhook(
     await markEvent(admin, inserted.id, "failed", message);
     throw error;
   }
+}
+
+export const mockPaySchema = z.object({
+  orderId: z.string().uuid(),
+  accessToken: z.string().uuid(),
+});
+
+export type MockPayResult = WebhookResult & { orderNumber: string };
+
+/**
+ * Dev-only helper: signs a deterministic mock `payment.paid` event inside the
+ * edge runtime and sends it through the real webhook verification path. The
+ * browser and Next.js never see PAYMENT_WEBHOOK_SECRET.
+ */
+export async function simulateMockPayment(
+  admin: AdminClient,
+  input: z.infer<typeof mockPaySchema>,
+): Promise<MockPayResult> {
+  const provider = getPaymentProvider();
+
+  if (provider.name !== "mock") {
+    throw new HttpError(403, "Mock payments are disabled");
+  }
+
+  const { data: order, error } = await admin
+    .from("orders")
+    .select("id,order_number,access_token,currency,total")
+    .eq("id", input.orderId)
+    .maybeSingle<{
+      id: string;
+      order_number: string;
+      access_token: string;
+      currency: string;
+      total: unknown;
+    }>();
+
+  if (error) {
+    throw new HttpError(500, error.message);
+  }
+
+  if (!order || order.access_token !== input.accessToken) {
+    throw new HttpError(404, "Order not found");
+  }
+
+  const rawBody = JSON.stringify({
+    eventId: `mock_paid_${order.id}`,
+    type: "payment.paid",
+    orderId: order.id,
+    paymentId: `mock_pay_${order.id}`,
+    amountCents: toCents(order.total) ?? 0,
+    currency: order.currency,
+  });
+
+  const signature = await signMockWebhook(rawBody);
+  const headers = new Headers({
+    "content-type": "application/json",
+    "x-mock-signature": signature,
+  });
+
+  const result = await processPaymentWebhook(admin, rawBody, headers);
+
+  return { ...result, orderNumber: order.order_number };
 }

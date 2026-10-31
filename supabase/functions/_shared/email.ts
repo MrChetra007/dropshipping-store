@@ -1,4 +1,5 @@
 import { toCents } from "./money.ts";
+import { siteUrl } from "./site.ts";
 import type { createAdminClient } from "./supabase.ts";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -58,10 +59,6 @@ function formatCents(cents: number, currency: string): string {
     style: "currency",
     currency,
   }).format(cents / 100);
-}
-
-function siteUrl(): string {
-  return (Deno.env.get("SITE_URL") ?? "").trim().replace(/\/+$/, "");
 }
 
 /**

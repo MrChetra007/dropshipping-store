@@ -2,6 +2,8 @@ import { z } from "npm:zod@4";
 
 import { HttpError } from "../_shared/http.ts";
 import { centsToAmount, toCents } from "../_shared/money.ts";
+import { getPaymentProvider } from "../_shared/payments/index.ts";
+import { requireSiteUrl } from "../_shared/site.ts";
 import type { createAdminClient } from "../_shared/supabase.ts";
 import { loadCart } from "./cart.ts";
 
@@ -31,17 +33,10 @@ export const createOrderSchema = z.object({
   note: z.string().trim().max(1000).nullable().optional(),
 });
 
-export const attachPaymentSchema = z.object({
+export const startPaymentSchema = z.object({
   orderId: z.string().uuid(),
   accessToken: z.string().uuid(),
   cartId: z.string().uuid(),
-  provider: z.string().trim().min(1).max(64),
-  checkoutId: z.string().trim().min(1).max(255),
-});
-
-export const abortOrderSchema = z.object({
-  orderId: z.string().uuid(),
-  accessToken: z.string().uuid(),
 });
 
 export const previewOrderSchema = z.object({
@@ -404,15 +399,48 @@ export async function createOrder(
   };
 }
 
-export async function attachPayment(
+export type StartPaymentResult = {
+  provider: string;
+  checkoutId: string;
+  redirectUrl: string;
+  orderNumber: string;
+};
+
+type StartPaymentOrderRow = {
+  id: string;
+  order_number: string;
+  access_token: string;
+  email: string;
+  currency: string;
+  status: string;
+  payment_status: string;
+  shipping_total: unknown;
+  total: unknown;
+};
+
+type StartPaymentItemRow = {
+  title: string;
+  variant_title: string | null;
+  quantity: number;
+  unit_price: unknown;
+};
+
+/**
+ * Starts the payment provider from inside the edge function so
+ * PAYMENT_PROVIDER, PAYMENT_WEBHOOK_SECRET, and any provider API key stay in
+ * Supabase function secrets instead of the Next.js environment.
+ */
+export async function startPayment(
   admin: AdminClient,
-  input: z.infer<typeof attachPaymentSchema>,
-): Promise<{ ok: true }> {
+  input: z.infer<typeof startPaymentSchema>,
+): Promise<StartPaymentResult> {
   const { data: order, error } = await admin
     .from("orders")
-    .select("id,status,access_token")
+    .select(
+      "id,order_number,access_token,email,currency,status,payment_status,shipping_total,total",
+    )
     .eq("id", input.orderId)
-    .maybeSingle<{ id: string; status: string; access_token: string }>();
+    .maybeSingle<StartPaymentOrderRow>();
 
   if (error) {
     throw new HttpError(500, error.message);
@@ -422,17 +450,79 @@ export async function attachPayment(
     throw new HttpError(404, "Order not found");
   }
 
-  if (order.status !== "pending_payment") {
+  if (order.status !== "pending_payment" || order.payment_status === "paid") {
     throw new HttpError(409, "Order is not awaiting payment");
+  }
+
+  const { data: itemRows, error: itemError } = await admin
+    .from("order_items")
+    .select("title,variant_title,quantity,unit_price")
+    .eq("order_id", order.id)
+    .order("created_at", { ascending: true });
+
+  if (itemError) {
+    throw new HttpError(500, itemError.message);
+  }
+
+  const items = ((itemRows ?? []) as StartPaymentItemRow[]).map((item) => ({
+    title:
+      item.variant_title && item.variant_title !== "Default"
+        ? `${item.title} — ${item.variant_title}`
+        : item.title,
+    quantity: item.quantity,
+    unitAmountCents: toCents(item.unit_price) ?? 0,
+  }));
+
+  let started: {
+    provider: string;
+    checkoutId: string;
+    redirectUrl: string;
+  };
+
+  try {
+    const baseUrl = requireSiteUrl();
+    const successUrl = `${baseUrl}/checkout/success?order=${encodeURIComponent(
+      order.order_number,
+    )}&token=${encodeURIComponent(order.access_token)}`;
+    const cancelUrl = `${baseUrl}/cart`;
+    const provider = getPaymentProvider();
+    const checkout = await provider.createCheckout({
+      orderId: order.id,
+      orderNumber: order.order_number,
+      email: order.email,
+      currency: order.currency,
+      amountCents: toCents(order.total) ?? 0,
+      items,
+      shippingCents: toCents(order.shipping_total) ?? 0,
+      successUrl,
+      cancelUrl,
+    });
+
+    started = {
+      provider: provider.name,
+      checkoutId: checkout.checkoutId,
+      redirectUrl: checkout.redirectUrl,
+    };
+  } catch (error) {
+    console.error("Payment checkout creation failed:", error);
+
+    // Do not leave an orphan pending_payment order when the provider cannot
+    // start a checkout.
+    await admin.from("orders").delete().eq("id", order.id);
+
+    throw new HttpError(
+      502,
+      "Could not start the payment. Please try again.",
+    );
   }
 
   const { error: updateError } = await admin
     .from("orders")
     .update({
-      payment_provider: input.provider,
-      provider_checkout_id: input.checkoutId,
+      payment_provider: started.provider,
+      provider_checkout_id: started.checkoutId,
     })
-    .eq("id", input.orderId);
+    .eq("id", order.id);
 
   if (updateError) {
     throw new HttpError(500, updateError.message);
@@ -447,41 +537,12 @@ export async function attachPayment(
     throw new HttpError(500, cartError.message);
   }
 
-  return { ok: true };
-}
-
-export async function abortOrder(
-  admin: AdminClient,
-  input: z.infer<typeof abortOrderSchema>,
-): Promise<{ ok: true }> {
-  const { data: order, error } = await admin
-    .from("orders")
-    .select("id,status,access_token")
-    .eq("id", input.orderId)
-    .maybeSingle<{ id: string; status: string; access_token: string }>();
-
-  if (error) {
-    throw new HttpError(500, error.message);
-  }
-
-  if (!order || order.access_token !== input.accessToken) {
-    return { ok: true };
-  }
-
-  if (order.status !== "pending_payment") {
-    throw new HttpError(409, "Only pending orders can be aborted");
-  }
-
-  const { error: deleteError } = await admin
-    .from("orders")
-    .delete()
-    .eq("id", input.orderId);
-
-  if (deleteError) {
-    throw new HttpError(500, deleteError.message);
-  }
-
-  return { ok: true };
+  return {
+    provider: started.provider,
+    checkoutId: started.checkoutId,
+    redirectUrl: started.redirectUrl,
+    orderNumber: order.order_number,
+  };
 }
 
 export type OrderPreview = {
