@@ -11,6 +11,7 @@ import {
   updateProduct,
   type UpdateProductState,
 } from "@/lib/admin-products-actions";
+import { cn } from "@/lib/utils";
 
 const initialState: UpdateProductState = {};
 
@@ -29,6 +30,7 @@ export function ProductEditForm({
     initialState,
   );
   const [images, setImages] = useState(product.images);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   function moveImage(index: number, offset: number) {
     const target = index + offset;
@@ -41,6 +43,19 @@ export function ProductEditForm({
       const next = [...current];
       const [item] = next.splice(index, 1);
       next.splice(target, 0, item);
+      return next;
+    });
+  }
+
+  function moveImageTo(from: number, to: number) {
+    if (from === to) {
+      return;
+    }
+
+    setImages((current) => {
+      const next = [...current];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
       return next;
     });
   }
@@ -141,7 +156,7 @@ export function ProductEditForm({
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full min-w-[42rem] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
@@ -187,22 +202,24 @@ export function ProductEditForm({
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-zinc-500">{variant.sku}</td>
-                    <td className="px-4 py-3 text-zinc-500">
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-500">
+                      {variant.sku}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-500 tabular-nums">
                       {variant.stock === null ? "Unknown" : variant.stock}
                     </td>
-                    <td className="px-4 py-3 text-zinc-500">
+                    <td className="px-4 py-3 text-zinc-500 tabular-nums">
                       {variant.costPrice === null
                         ? "—"
                         : priceFormat.format(variant.costPrice)}
                       {margin === null ? null : (
                         <span
-                          className={`ml-2 text-xs ${
+                          className={`ml-2 text-xs font-medium ${
                             margin < 0
-                              ? "text-red-600"
-                              : variant.needsReview
-                                ? "text-amber-600"
-                                : "text-zinc-400"
+                              ? "text-red-600 dark:text-red-400"
+                              : variant.needsReview || margin < 15
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-emerald-600 dark:text-emerald-400"
                           }`}
                         >
                           {margin.toFixed(0)}% margin
@@ -218,7 +235,7 @@ export function ProductEditForm({
                         max="1000000"
                         step="0.01"
                         aria-label={`Price for ${variant.title}`}
-                        className="h-9 w-32"
+                        className="h-9 w-32 font-mono tabular-nums"
                         required
                       />
                     </td>
@@ -234,13 +251,13 @@ export function ProductEditForm({
         <div>
           <h2 className="text-lg font-semibold">Images</h2>
           <p className="text-sm text-zinc-500">
-            The first image is the main product image. Reorder to change gallery
-            order.
+            The first image is the main product image. Drag rows or use the
+            arrows to change gallery order.
           </p>
         </div>
 
         {images.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+          <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
             No images imported.
           </p>
         ) : (
@@ -248,7 +265,21 @@ export function ProductEditForm({
             {images.map((image, index) => (
               <li
                 key={image.id}
-                className="flex items-center gap-4 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex !== null) {
+                    moveImageTo(dragIndex, index);
+                  }
+
+                  setDragIndex(null);
+                }}
+                onDragEnd={() => setDragIndex(null)}
+                className={cn(
+                  "flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-3 transition-opacity dark:border-zinc-800 dark:bg-zinc-950",
+                  dragIndex === index && "opacity-50",
+                )}
               >
                 <input type="hidden" name="image_id" value={image.id} />
                 <input
@@ -256,7 +287,13 @@ export function ProductEditForm({
                   name={`image_order_${image.id}`}
                   value={index}
                 />
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
+                <span
+                  aria-hidden
+                  className="cursor-grab select-none text-lg leading-none text-zinc-300 dark:text-zinc-600"
+                >
+                  ⠿
+                </span>
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                   <Image
                     src={image.url}
                     alt={image.alt ?? ""}
@@ -269,7 +306,9 @@ export function ProductEditForm({
                   <p className="text-sm font-medium">
                     {index === 0 ? "Main image" : `Image ${index + 1}`}
                   </p>
-                  <p className="truncate text-xs text-zinc-400">{image.url}</p>
+                  <p className="truncate font-mono text-xs text-zinc-400">
+                    {image.url}
+                  </p>
                   {image.variantId ? (
                     <p className="text-xs text-zinc-400">Variant image</p>
                   ) : null}
@@ -279,7 +318,7 @@ export function ProductEditForm({
                     type="button"
                     onClick={() => moveImage(index, -1)}
                     disabled={index === 0}
-                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-zinc-700"
+                    className="rounded-lg border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-zinc-700"
                   >
                     Up
                   </button>
@@ -287,7 +326,7 @@ export function ProductEditForm({
                     type="button"
                     onClick={() => moveImage(index, 1)}
                     disabled={index === images.length - 1}
-                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-zinc-700"
+                    className="rounded-lg border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-zinc-700"
                   >
                     Down
                   </button>

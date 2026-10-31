@@ -46,7 +46,7 @@ export function ImportSelectionForm({
       ) : null}
 
       {state.result ? (
-        <div className="space-y-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+        <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900">
           {state.result.imported.length > 0 ? (
             <div>
               <p className="font-medium text-emerald-700 dark:text-emerald-300">
@@ -104,7 +104,7 @@ export function ImportSelectionForm({
         </div>
       ) : null}
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-zinc-200 bg-white/95 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-zinc-200 bg-white/95 py-3 shadow-[0_-8px_24px_-16px_rgba(0,0,0,0.25)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
         <Button type="submit" disabled={pending || selectedCount === 0}>
           {pending ? "Importing…" : "Import selected"}
         </Button>

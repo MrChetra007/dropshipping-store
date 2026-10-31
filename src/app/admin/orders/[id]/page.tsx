@@ -129,7 +129,7 @@ function Line({
   return (
     <div className="flex items-baseline justify-between gap-4">
       <span className="text-zinc-600 dark:text-zinc-400">{label}</span>
-      <span className={strong ? "font-semibold" : ""}>{value}</span>
+      <span className={strong ? "font-semibold tabular-nums" : "tabular-nums"}>{value}</span>
     </div>
   );
 }
@@ -161,7 +161,7 @@ export default async function AdminOrderPage({ params }: PageProps) {
         >
           ← Back to orders
         </Link>
-        <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           <p className="font-medium">Could not load the order</p>
           <p className="mt-1">{errorMessage}</p>
         </div>
@@ -209,7 +209,7 @@ export default async function AdminOrderPage({ params }: PageProps) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
           <h2 className="font-medium">Shipping</h2>
           <div className="mt-3 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
             <p className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -235,7 +235,7 @@ export default async function AdminOrderPage({ params }: PageProps) {
           ) : null}
         </section>
 
-        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
           <h2 className="font-medium">Totals</h2>
           <div className="mt-3 space-y-1 text-sm">
             <Line
@@ -298,7 +298,11 @@ export default async function AdminOrderPage({ params }: PageProps) {
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     CJ order id:
                   </span>{" "}
-                  {supplier.supplierOrderId ?? "—"}
+                  {supplier.supplierOrderId ? (
+                    <span className="font-mono">{supplier.supplierOrderId}</span>
+                  ) : (
+                    "—"
+                  )}
                 </p>
                 <p>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -354,7 +358,7 @@ export default async function AdminOrderPage({ params }: PageProps) {
         )}
       </section>
 
-      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <section className="rounded-xl border border-zinc-200 dark:border-zinc-800">
         <h2 className="border-b border-zinc-200 px-5 py-3 font-medium dark:border-zinc-800">
           Items
         </h2>
@@ -380,7 +384,7 @@ export default async function AdminOrderPage({ params }: PageProps) {
                       </p>
                     ) : null}
                   </td>
-                  <td className="px-5 py-3 text-zinc-600 dark:text-zinc-400">
+                  <td className="px-5 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">
                     {item.sku ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-right">{item.quantity}</td>
@@ -397,7 +401,7 @@ export default async function AdminOrderPage({ params }: PageProps) {
         </div>
       </section>
 
-      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <section className="rounded-xl border border-zinc-200 dark:border-zinc-800">
         <h2 className="border-b border-zinc-200 px-5 py-3 font-medium dark:border-zinc-800">
           Timeline
         </h2>

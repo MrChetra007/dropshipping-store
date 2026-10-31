@@ -71,7 +71,7 @@ function param(value: string | string[] | undefined): string {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
       <p className="text-xs uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
         {value}
@@ -143,11 +143,11 @@ export default async function ImportProductsPage({
           name="q"
           defaultValue={query}
           placeholder="Search CJ products by keyword"
-          className="h-11 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-300"
+          className="h-11 min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-300"
         />
         <button
           type="submit"
-          className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="inline-flex h-11 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           Search
         </button>
@@ -161,7 +161,7 @@ export default async function ImportProductsPage({
           <SearchResults query={query} page={page} />
         </Suspense>
       ) : (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <p className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
           Enter a keyword to search the CJ catalog.
         </p>
       )}
@@ -231,11 +231,11 @@ async function SearchResults({
       </div>
 
       {search.products.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <p className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
           No CJ products matched this search.
         </p>
       ) : (
-        <ul className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <ul className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
           {search.products.map((product) => (
             <li
               key={product.id}
@@ -248,7 +248,7 @@ async function SearchResults({
                 aria-label={`Select ${product.title}`}
                 className="mt-1 h-4 w-4 shrink-0"
               />
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                 {product.image ? (
                   <Image
                     src={product.image}
@@ -262,7 +262,10 @@ async function SearchResults({
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{product.title}</p>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {product.sku ? `SKU ${product.sku} · ` : ""}
+                  {product.sku ? (
+                    <span className="font-mono text-xs">SKU {product.sku}</span>
+                  ) : null}
+                  {product.sku ? " · " : ""}
                   {product.price === null
                     ? "Price unavailable"
                     : `CJ ${priceFormat.format(product.price)}`}
@@ -337,7 +340,7 @@ async function Preview({
         role="dialog"
         aria-modal="true"
         aria-labelledby="preview-title"
-        className="relative z-10 mx-auto w-full max-w-6xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+        className="relative z-10 mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
       >
         <div className="flex items-start justify-between gap-4 border-b border-zinc-200 p-5 dark:border-zinc-800">
           <div className="min-w-0">
@@ -351,11 +354,11 @@ async function Preview({
               {preview.title}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-              <span className="rounded-full border border-zinc-200 px-2.5 py-1 dark:border-zinc-700">
+              <span className="rounded-full border border-zinc-200 px-2.5 py-1 font-mono dark:border-zinc-700">
                 CJ {preview.pid}
               </span>
               {preview.sku ? (
-                <span className="rounded-full border border-zinc-200 px-2.5 py-1 dark:border-zinc-700">
+                <span className="rounded-full border border-zinc-200 px-2.5 py-1 font-mono dark:border-zinc-700">
                   SKU {preview.sku}
                 </span>
               ) : null}
@@ -436,20 +439,20 @@ async function Preview({
                             </span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-zinc-500">
+                        <td className="px-3 py-2.5 font-mono text-xs text-zinc-500">
                           {variant.sku ?? "—"}
                         </td>
-                        <td className="px-3 py-2.5">
+                        <td className="px-3 py-2.5 tabular-nums">
                           {variant.cost === null
                             ? "—"
                             : priceFormat.format(variant.cost)}
                         </td>
-                        <td className="px-3 py-2.5 text-zinc-500">
+                        <td className="px-3 py-2.5 text-zinc-500 tabular-nums">
                           {variant.weightG === null
                             ? "—"
                             : `${variant.weightG} g`}
                         </td>
-                        <td className="px-3 py-2.5 text-zinc-500">
+                        <td className="px-3 py-2.5 text-zinc-500 tabular-nums">
                           {variant.stock === null ? "Unknown" : variant.stock}
                         </td>
                       </tr>
@@ -513,7 +516,7 @@ function PreviewError({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 mx-auto mt-24 w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+        className="relative z-10 mx-auto mt-24 w-full max-w-lg rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
       >
         <h2 className="text-lg font-semibold">Could not load CJ product</h2>
         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{message}</p>

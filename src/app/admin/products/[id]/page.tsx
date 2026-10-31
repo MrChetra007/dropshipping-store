@@ -44,7 +44,7 @@ export default async function EditProductPage({
         >
           ← Back to products
         </Link>
-        <p className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           Could not load product: {errorMessage ?? "Product not found"}
         </p>
       </div>
@@ -65,7 +65,7 @@ export default async function EditProductPage({
             <h1 className="text-2xl font-semibold tracking-tight">
               {product.product.title}
             </h1>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 font-mono text-sm text-zinc-500">
               /products/{product.product.slug}
               {product.supplierProductId
                 ? ` · CJ ${product.supplierProductId}`
@@ -81,7 +81,7 @@ export default async function EditProductPage({
       <ProductEditForm product={product} />
 
       {product.product.description ? (
-        <section className="space-y-3 rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+        <section className="space-y-3 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
           <div>
             <h2 className="text-lg font-semibold">Description preview</h2>
             <p className="text-sm text-zinc-500">

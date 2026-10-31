@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { Input } from "@/components/ui/input";
 import { callAdminApi } from "@/lib/supabase/functions";
+import { cn } from "@/lib/utils";
 
 export const instant = false;
 
@@ -27,10 +29,29 @@ type ProductsResponse = {
   products: AdminProduct[];
 };
 
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
 const priceFormat = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
+
+const STATUS_FILTERS = [
+  { label: "All", value: "" },
+  { label: "Active", value: "active" },
+  { label: "Draft", value: "draft" },
+  { label: "Archived", value: "archived" },
+];
+
+function firstParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
@@ -53,7 +74,10 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const query = firstParam(params.q).trim();
+  const status = firstParam(params.status).trim();
   let products: AdminProduct[] = [];
   let errorMessage: string | null = null;
 
@@ -63,6 +87,31 @@ export default async function AdminProductsPage() {
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Unknown error";
   }
+
+  const filtered = products.filter((product) => {
+    const matchesQuery =
+      !query ||
+      product.title.toLowerCase().includes(query.toLowerCase()) ||
+      product.slug.toLowerCase().includes(query.toLowerCase());
+    const matchesStatus = !status || product.status === status;
+
+    return matchesQuery && matchesStatus;
+  });
+
+  const filterHref = (nextStatus: string) => {
+    const next = new URLSearchParams();
+
+    if (query) {
+      next.set("q", query);
+    }
+
+    if (nextStatus) {
+      next.set("status", nextStatus);
+    }
+
+    const search = next.toString();
+    return search ? `/admin/products?${search}` : "/admin/products";
+  };
 
   return (
     <div className="space-y-6">
@@ -75,20 +124,79 @@ export default async function AdminProductsPage() {
         </div>
         <Link
           href="/admin/products/import"
-          className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="inline-flex h-11 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           Import products
         </Link>
       </div>
 
+      <div className="space-y-3">
+        <form
+          action="/admin/products"
+          method="get"
+          className="flex flex-wrap gap-2"
+        >
+          <Input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder="Search by title or slug"
+            aria-label="Search products"
+            className="min-w-0 flex-1 sm:max-w-sm"
+          />
+          {status ? (
+            <input type="hidden" name="status" value={status} />
+          ) : null}
+          <button
+            type="submit"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          >
+            Search
+          </button>
+          {query || status ? (
+            <Link
+              href="/admin/products"
+              className="inline-flex h-11 items-center px-2 text-sm text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              Clear
+            </Link>
+          ) : null}
+        </form>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {STATUS_FILTERS.map((filter) => {
+            const active = status === filter.value;
+
+            return (
+              <Link
+                key={filter.label}
+                href={filterHref(filter.value)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                  active
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                    : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900",
+                )}
+              >
+                {filter.label}
+              </Link>
+            );
+          })}
+          <span className="ml-auto text-xs text-zinc-500">
+            {filtered.length} product{filtered.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      </div>
+
       {errorMessage ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           Could not load products: {errorMessage}
         </p>
       ) : null}
 
       {!errorMessage && products.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
+        <div className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
           <p className="font-medium">No products imported yet</p>
           <p className="mt-1 text-sm text-zinc-500">
             Search the CJ catalog and import your first product.
@@ -96,16 +204,25 @@ export default async function AdminProductsPage() {
         </div>
       ) : null}
 
-      {products.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+      {products.length > 0 && filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
+          <p className="font-medium">No products match</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Try a different search or status filter.
+          </p>
+        </div>
+      ) : null}
+
+      {filtered.length > 0 ? (
+        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {products.map((product) => (
+            {filtered.map((product) => (
               <li key={product.id}>
                 <Link
                   href={`/admin/products/${product.id}`}
                   className="flex items-center gap-4 p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 >
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                     {product.image ? (
                       <Image
                         src={product.image}
@@ -130,11 +247,13 @@ export default async function AdminProductsPage() {
                       {product.variantCount} variant
                       {product.variantCount === 1 ? "" : "s"} ·{" "}
                       {product.activeVariantCount} active ·{" "}
-                      {product.minPrice === null
-                        ? "No price"
-                        : `from ${priceFormat.format(product.minPrice)}`}
+                      <span className="tabular-nums">
+                        {product.minPrice === null
+                          ? "No price"
+                          : `from ${priceFormat.format(product.minPrice)}`}
+                      </span>
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-zinc-400">
+                    <p className="mt-0.5 truncate font-mono text-xs text-zinc-400">
                       /products/{product.slug}
                     </p>
                   </div>

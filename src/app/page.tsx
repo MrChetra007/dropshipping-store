@@ -65,7 +65,7 @@ export default async function Home() {
   return (
     <main className="flex-1">
       <section className="border-b border-zinc-200 bg-gradient-to-b from-zinc-50 to-white dark:border-zinc-800 dark:from-zinc-950 dark:to-zinc-900">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 sm:py-24 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 sm:py-24 lg:grid-cols-[3fr_2fr] lg:items-center">
           <div className="space-y-6">
             <p className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
               Ships to the US, UK &amp; more
@@ -80,14 +80,14 @@ export default async function Home() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/products"
-                className="inline-flex h-12 items-center justify-center rounded-md bg-zinc-900 px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                className="inline-flex h-12 items-center justify-center rounded-lg bg-zinc-900 px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
               >
                 Shop all products
               </Link>
               {categoryTiles[0] ? (
                 <Link
                   href={`/categories/${categoryTiles[0].slug}`}
-                  className="inline-flex h-12 items-center justify-center rounded-md border border-zinc-300 bg-white px-6 text-sm font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                  className="inline-flex h-12 items-center justify-center rounded-lg border border-zinc-300 bg-white px-6 text-sm font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
                 >
                   Browse {categoryTiles[0].name}
                 </Link>
@@ -143,7 +143,7 @@ export default async function Home() {
               <li key={category.id}>
                 <Link
                   href={`/categories/${category.slug}`}
-                  className="group relative flex aspect-[4/3] items-end overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                  className="group relative flex aspect-[4/3] items-end overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
                 >
                   {category.imageUrl ? (
                     <Image
@@ -154,7 +154,7 @@ export default async function Home() {
                       className="object-cover opacity-80 transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : null}
-                  <span className="relative rounded-md bg-white/90 px-2.5 py-1 text-sm font-medium text-zinc-900 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-100">
+                  <span className="relative rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-zinc-900 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-100">
                     {category.name}
                   </span>
                 </Link>
@@ -191,7 +191,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="border-t border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/40">
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-12 sm:grid-cols-3">
           <div className="space-y-1">
             <p className="font-medium">Tracked delivery</p>

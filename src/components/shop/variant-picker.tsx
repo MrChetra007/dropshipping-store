@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 export type PickerVariant = {
   id: string;
+  sku: string;
   title: string;
   options: Record<string, string>;
   priceCents: number;
@@ -151,6 +152,9 @@ export function VariantPicker({
               : `In stock · ${selected.stock} available`
             : "Out of stock"}
         </p>
+        {selected.sku ? (
+          <p className="font-mono text-xs text-zinc-500">SKU {selected.sku}</p>
+        ) : null}
       </div>
 
       {optionGroups.length > 0 ? (
@@ -171,7 +175,7 @@ export function VariantPicker({
                       disabled={!canSelect}
                       aria-pressed={isSelected}
                       className={cn(
-                        "inline-flex h-9 items-center rounded-md border px-3 text-sm transition-colors",
+                        "inline-flex h-9 items-center rounded-lg border px-3 text-sm transition-colors",
                         isSelected
                           ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
                           : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900",
@@ -202,7 +206,7 @@ export function VariantPicker({
                   disabled={!canSelect}
                   aria-pressed={isSelected}
                   className={cn(
-                    "inline-flex h-9 items-center rounded-md border px-3 text-sm transition-colors",
+                    "inline-flex h-9 items-center rounded-lg border px-3 text-sm transition-colors",
                     isSelected
                       ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
                       : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900",
@@ -221,29 +225,39 @@ export function VariantPicker({
 
       <div className="space-y-3">
         <div className="flex gap-2">
-          <label htmlFor="variant-quantity" className="sr-only">
-            Quantity
-          </label>
-          <select
-            id="variant-quantity"
-            value={quantity}
-            onChange={(event) => setQuantity(Number(event.target.value))}
-            disabled={!available}
-            className="h-11 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-900 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-300"
-          >
-            {Array.from({ length: maxQuantity }, (_, index) => index + 1).map(
-              (value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ),
-            )}
-          </select>
+          <div className="inline-flex h-11 items-center rounded-lg border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+            <button
+              type="button"
+              onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+              disabled={!available || quantity <= 1}
+              aria-label="Decrease quantity"
+              className="flex h-full w-10 items-center justify-center text-lg text-zinc-600 transition-colors hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              −
+            </button>
+            <span
+              aria-live="polite"
+              className="w-8 text-center text-sm tabular-nums"
+            >
+              {quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setQuantity((current) => Math.min(maxQuantity, current + 1))
+              }
+              disabled={!available || quantity >= maxQuantity}
+              aria-label="Increase quantity"
+              className="flex h-full w-10 items-center justify-center text-lg text-zinc-600 transition-colors hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              +
+            </button>
+          </div>
           <button
             type="button"
             onClick={addToCart}
             disabled={!available || status === "adding"}
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
             {status === "adding"
               ? "Adding…"

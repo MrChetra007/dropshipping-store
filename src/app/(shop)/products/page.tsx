@@ -79,18 +79,6 @@ export default async function ProductsPage({ searchParams }: PageProps) {
 
         <div className="max-w-xl">
           <SearchForm defaultValue={q} category={activeCategory?.slug} />
-          {q ? (
-            <Link
-              href={
-                activeCategory
-                  ? `/products?category=${encodeURIComponent(activeCategory.slug)}`
-                  : "/products"
-              }
-              className="mt-2 inline-block text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              Clear search
-            </Link>
-          ) : null}
         </div>
 
         <CategoryChips

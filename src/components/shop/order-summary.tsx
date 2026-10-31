@@ -15,7 +15,7 @@ export function OrderSummary({
       <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
         {order.items.map((item, index) => (
           <li key={`${item.title}-${index}`} className="flex gap-4 p-4">
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
               {item.imageUrl ? (
                 <Image
                   src={item.imageUrl}
@@ -33,7 +33,7 @@ export function OrderSummary({
               ) : null}
               <p className="text-xs text-zinc-500">Qty {item.quantity}</p>
             </div>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium tabular-nums">
               {formatCents(item.lineTotalCents, order.currency)}
             </p>
           </li>
@@ -41,26 +41,34 @@ export function OrderSummary({
       </ul>
 
       <div className="space-y-6">
-        <div className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="font-medium">Summary</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <dt className="text-zinc-500">Subtotal</dt>
-              <dd>{formatCents(order.subtotalCents, order.currency)}</dd>
+              <dd className="tabular-nums">
+                {formatCents(order.subtotalCents, order.currency)}
+              </dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-zinc-500">Shipping</dt>
-              <dd>{formatCents(order.shippingCents, order.currency)}</dd>
+              <dd className="tabular-nums">
+                {formatCents(order.shippingCents, order.currency)}
+              </dd>
             </div>
             {order.discountCents > 0 ? (
               <div className="flex items-center justify-between">
                 <dt className="text-zinc-500">Discount</dt>
-                <dd>−{formatCents(order.discountCents, order.currency)}</dd>
+                <dd className="tabular-nums">
+                  −{formatCents(order.discountCents, order.currency)}
+                </dd>
               </div>
             ) : null}
             <div className="flex items-center justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
               <dt>Total</dt>
-              <dd>{formatCents(order.totalCents, order.currency)}</dd>
+              <dd className="tabular-nums">
+                {formatCents(order.totalCents, order.currency)}
+              </dd>
             </div>
           </dl>
           {order.shippingRateName ? (
@@ -71,7 +79,7 @@ export function OrderSummary({
         </div>
 
         {showAddress ? (
-          <div className="rounded-xl border border-zinc-200 p-5 text-sm dark:border-zinc-800">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 text-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="font-medium">Shipping address</h2>
             <address className="mt-2 space-y-0.5 not-italic text-zinc-600 dark:text-zinc-400">
               <p>{order.shippingAddress.name}</p>

@@ -16,7 +16,7 @@ export function PreviewGallery({
 
   if (!current) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-zinc-300 text-sm text-zinc-400 dark:border-zinc-700">
+      <div className="flex aspect-square items-center justify-center rounded-2xl border border-dashed border-zinc-300 text-sm text-zinc-400 dark:border-zinc-700">
         No image available
       </div>
     );
@@ -24,7 +24,7 @@ export function PreviewGallery({
 
   return (
     <div className="space-y-3">
-      <div className="relative aspect-square overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="relative aspect-square overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
         <Image
           src={current}
           alt={title}

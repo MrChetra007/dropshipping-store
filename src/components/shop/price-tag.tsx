@@ -26,9 +26,11 @@ export function PriceTag({
 
   return (
     <span className={cn("inline-flex items-baseline gap-2", className)}>
-      <span className="font-semibold">{formatCents(priceCents, currency)}</span>
+      <span className="font-semibold tabular-nums">
+        {formatCents(priceCents, currency)}
+      </span>
       {showCompareAt ? (
-        <span className="text-sm text-zinc-400 line-through">
+        <span className="text-sm text-zinc-400 line-through tabular-nums">
           {formatCents(compareAtCents, currency)}
         </span>
       ) : null}

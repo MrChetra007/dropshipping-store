@@ -68,7 +68,7 @@ export function CartItems({ cart }: { cart: Cart }) {
 
           return (
             <li key={item.id} className="flex gap-4 p-4">
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
                 {item.imageUrl ? (
                   <Image
                     src={item.imageUrl}
@@ -95,7 +95,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                       </p>
                     ) : null}
                   </div>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-medium tabular-nums">
                     {formatCents(item.lineTotalCents, item.currency)}
                   </p>
                 </div>
@@ -120,7 +120,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                     onChange={(event) =>
                       changeQuantity(item.variantId, Number(event.target.value))
                     }
-                    className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-sm disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950"
+                    className="h-8 rounded-lg border border-zinc-300 bg-white px-2 text-sm disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     {Array.from({ length: maxQuantity }, (_, index) => index + 1).map(
                       (value) => (

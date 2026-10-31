@@ -172,6 +172,7 @@ export default async function ProductPage({ params }: PageProps) {
           <VariantPicker
             variants={variants.map((variant) => ({
               id: variant.id,
+              sku: variant.sku,
               title: variant.title,
               options: variant.options,
               priceCents: variant.priceCents,
@@ -181,28 +182,64 @@ export default async function ProductPage({ params }: PageProps) {
             }))}
           />
 
-          <div className="rounded-xl border border-zinc-200 p-5 text-sm dark:border-zinc-800">
-            <p className="font-medium">Delivery &amp; shipping</p>
-            <ul className="mt-2 space-y-1 text-zinc-600 dark:text-zinc-400">
-              {shippingEstimates.map((rate) => (
-                <li key={`${rate.countryCode}-${rate.name}`}>
-                  {countryNames[rate.countryCode] ?? rate.countryCode}:{" "}
-                  {shippingLabel(rate.minDays, rate.maxDays)}
-                  {rate.freeOverCents !== null
-                    ? ` · free over ${formatCents(rate.freeOverCents, currency)}`
-                    : ` · ${formatCents(rate.amountCents, currency)}`}
-                </li>
-              ))}
-              {shippingEstimates.length === 0 ? (
-                <li>
-                  Delivery times are confirmed by email once your order ships.
-                </li>
-              ) : null}
-            </ul>
-            <p className="mt-3 text-xs text-zinc-500">
-              Orders are dispatched from our supplier. Tracking is added as soon
-              as your parcel is on its way.
-            </p>
+          <div className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+            <details className="group" open>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                Delivery &amp; shipping
+                <span
+                  aria-hidden
+                  className="text-lg font-normal text-zinc-400"
+                >
+                  <span className="group-open:hidden">+</span>
+                  <span className="hidden group-open:inline">−</span>
+                </span>
+              </summary>
+              <div className="space-y-3 px-5 pb-5 text-sm">
+                <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                  {shippingEstimates.map((rate) => (
+                    <li key={`${rate.countryCode}-${rate.name}`}>
+                      {countryNames[rate.countryCode] ?? rate.countryCode}:{" "}
+                      {shippingLabel(rate.minDays, rate.maxDays)}
+                      {rate.freeOverCents !== null
+                        ? ` · free over ${formatCents(rate.freeOverCents, currency)}`
+                        : ` · ${formatCents(rate.amountCents, currency)}`}
+                    </li>
+                  ))}
+                  {shippingEstimates.length === 0 ? (
+                    <li>
+                      Delivery times are confirmed by email once your order
+                      ships.
+                    </li>
+                  ) : null}
+                </ul>
+                <p className="text-xs text-zinc-500">
+                  Orders are dispatched from our supplier. Tracking is added as
+                  soon as your parcel is on its way.
+                </p>
+              </div>
+            </details>
+
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                Returns &amp; support
+                <span
+                  aria-hidden
+                  className="text-lg font-normal text-zinc-400"
+                >
+                  <span className="group-open:hidden">+</span>
+                  <span className="hidden group-open:inline">−</span>
+                </span>
+              </summary>
+              <div className="space-y-2 px-5 pb-5 text-sm text-zinc-600 dark:text-zinc-400">
+                <p>
+                  If something arrives damaged or incorrect, contact support
+                  with your order number and a photo, and we will make it right.
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Keep the packaging until your order is confirmed.
+                </p>
+              </div>
+            </details>
           </div>
         </div>
       </div>

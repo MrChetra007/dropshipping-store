@@ -50,7 +50,7 @@ const COUNTRIES = [
 ];
 
 const fieldClass =
-  "h-11 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-300";
+  "h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-300";
 
 function ratesForCountry(
   rates: CheckoutShippingRate[],
@@ -308,7 +308,7 @@ export function CheckoutForm({
               {countryRates.map((rate) => (
                 <label
                   key={`${rate.countryCode}-${rate.name}`}
-                  className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-zinc-200 px-4 py-3 text-sm has-checked:border-zinc-900 dark:border-zinc-800 dark:has-checked:border-zinc-100"
+                  className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-zinc-200 px-4 py-3 text-sm has-checked:border-zinc-900 dark:border-zinc-800 dark:has-checked:border-zinc-100"
                 >
                   <span className="flex items-center gap-3">
                     <input
@@ -380,19 +380,19 @@ export function CheckoutForm({
               rows={3}
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-300"
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-300"
             />
           </label>
         </section>
       </div>
 
-      <aside className="h-fit space-y-4 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <aside className="h-fit space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-5 lg:sticky lg:top-24 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="font-medium">Order summary</h2>
 
         <ul className="space-y-3">
           {cart.items.map((item) => (
             <li key={item.id} className="flex gap-3">
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
                 {item.imageUrl ? (
                   <Image
                     src={item.imageUrl}
@@ -412,7 +412,7 @@ export function CheckoutForm({
                   Qty {item.quantity}
                 </p>
               </div>
-              <p className="text-sm">
+              <p className="text-sm tabular-nums">
                 {formatCents(item.lineTotalCents, item.currency)}
               </p>
             </li>
@@ -422,11 +422,13 @@ export function CheckoutForm({
         <dl className="space-y-2 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
           <div className="flex items-center justify-between">
             <dt className="text-zinc-500">Subtotal</dt>
-            <dd>{formatCents(cart.subtotalCents, cart.currency)}</dd>
+            <dd className="tabular-nums">
+              {formatCents(cart.subtotalCents, cart.currency)}
+            </dd>
           </div>
           <div className="flex items-center justify-between">
             <dt className="text-zinc-500">Shipping</dt>
-            <dd>
+            <dd className="tabular-nums">
               {selectedRate
                 ? shippingCents === 0
                   ? "Free"
@@ -436,7 +438,9 @@ export function CheckoutForm({
           </div>
           <div className="flex items-center justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
             <dt>Total</dt>
-            <dd>{formatCents(totalCents, cart.currency)}</dd>
+            <dd className="tabular-nums">
+              {formatCents(totalCents, cart.currency)}
+            </dd>
           </div>
         </dl>
 
@@ -452,7 +456,7 @@ export function CheckoutForm({
         <button
           type="submit"
           disabled={submitting || !selectedRate}
-          className="flex h-11 w-full items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           {submitting ? "Starting checkout…" : "Continue to payment"}
         </button>

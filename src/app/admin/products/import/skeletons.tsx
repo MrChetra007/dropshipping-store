@@ -16,7 +16,7 @@ export function SearchResultsSkeleton() {
         <Skeleton className="h-4 w-32" />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={index}
@@ -55,7 +55,7 @@ export function PreviewSkeleton({ closeHref }: { closeHref: string }) {
         role="dialog"
         aria-modal="true"
         aria-busy="true"
-        className="relative z-10 mx-auto w-full max-w-6xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+        className="relative z-10 mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
       >
         <div className="flex items-start justify-between gap-4 border-b border-zinc-200 p-5 dark:border-zinc-800">
           <div className="w-full max-w-xl space-y-3">
