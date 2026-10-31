@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useCartFeedback } from "@/components/shop/cart-feedback";
 import { PriceTag } from "@/components/shop/price-tag";
 import { cn } from "@/lib/utils";
 
@@ -23,8 +23,10 @@ function isAvailable(variant: PickerVariant): boolean {
 
 export function VariantPicker({
   variants,
+  productTitle,
 }: {
   variants: PickerVariant[];
+  productTitle?: string;
 }) {
   const initial = variants.find(isAvailable) ?? variants[0];
   const [selectedId, setSelectedId] = useState(initial?.id ?? "");
@@ -33,6 +35,7 @@ export function VariantPicker({
     "idle",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { notifyAdded } = useCartFeedback();
   const selected = variants.find((variant) => variant.id === selectedId) ?? initial;
 
   const optionGroups = useMemo(() => {
@@ -99,6 +102,7 @@ export function VariantPicker({
       }
 
       setStatus("added");
+      notifyAdded({ title: productTitle ?? selected.title, quantity });
     } catch (error) {
       setStatus("error");
       setErrorMessage(
@@ -266,17 +270,6 @@ export function VariantPicker({
                 : "Out of stock"}
           </button>
         </div>
-        {status === "added" ? (
-          <p
-            role="status"
-            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
-          >
-            Added to cart.{" "}
-            <Link href="/cart" className="underline underline-offset-2">
-              View cart
-            </Link>
-          </p>
-        ) : null}
         {status === "error" && errorMessage ? (
           <p
             role="alert"

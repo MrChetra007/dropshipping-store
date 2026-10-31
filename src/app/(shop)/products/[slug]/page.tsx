@@ -170,6 +170,7 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
 
           <VariantPicker
+            productTitle={product.title}
             variants={variants.map((variant) => ({
               id: variant.id,
               sku: variant.sku,

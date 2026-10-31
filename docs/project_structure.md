@@ -57,6 +57,9 @@ Non-UI route handlers: `/api/cart`, `/api/checkout`, `/api/webhooks/payment`,
   - Brand: **CJ Store** (semibold, tracking-tight) linking to `/`.
   - Nav links: Products, Cart, Account, and a pill-shaped “Log in” link. Muted
     `text-zinc-600` with hover to near-black/near-white.
+- `CartFeedback` (client) wraps the page content and renders the floating cart
+  button (bottom-right, with item-count badge) and the add-to-cart toast. Both
+  are hidden on admin, account, auth, cart, checkout, and order routes.
 - No global footer; the home page ends with a features band.
 - All pages render inside this shell.
 
@@ -453,7 +456,8 @@ File: `src/app/admin/orders/[id]/page.tsx` + `retry-button.tsx`
 | `ProductGrid` | `product-grid.tsx` | 2/4-column grid, dashed empty-state card |
 | `ProductCard` | `product-card.tsx` | Rounded-xl bordered card, square image with hover zoom, out-of-stock pill, category, 2-line title, price; lifts and shadows on hover |
 | `ProductGallery` | `product-gallery.tsx` | Client; square main image + horizontal thumbnails, selected ring |
-| `VariantPicker` | `variant-picker.tsx` | Client; price/stock, monospace SKU, option buttons, −/+ quantity stepper, add-to-cart with status messages |
+| `VariantPicker` | `variant-picker.tsx` | Client; price/stock, monospace SKU, option buttons, −/+ quantity stepper, add-to-cart with toast feedback |
+| `CartFeedback` | `cart-feedback.tsx` | Client; cart-count fetch, floating “Cart” pill with count badge, dismissible 5s “Added to cart” toast |
 | `CategoryChips` | `category-chips.tsx` | Rounded-full filter links, solid active state, preserves query |
 | `SearchForm` | `search-form.tsx` | Client; debounced input + primary Search button, GET to `/products`, inline clear, optional hidden category |
 | `Pagination` | `pagination.tsx` | Previous/Next + numbered window with ellipses, solid current page |
@@ -543,6 +547,8 @@ File: `src/app/admin/orders/[id]/page.tsx` + `retry-button.tsx`
 - Cart and variant picker use client `fetch` to `/api/cart` with optimistic
   pending states and inline messages.
 - The catalog search debounces navigation by 350 ms and clears inline.
+- Adding to cart shows a 5-second toast with the product title, quantity, and a
+  “View cart” link; a floating cart pill shows the live item count.
 - Product media and editor images support drag-to-reorder (with arrow buttons
   as a fallback).
 - Hover feedback is consistent: borders darken, backgrounds tint, images zoom
