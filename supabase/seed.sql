@@ -1,0 +1,2 @@
+-- Local seed placeholder. The store schema and seed rows live in the root
+-- schema.sql and are applied manually in the Supabase SQL Editor (or via psql).
