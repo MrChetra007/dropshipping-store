@@ -172,7 +172,19 @@ export function ProductEditForm({
                       />
                       <p className="font-medium">{variant.title}</p>
                       {!variant.isActive ? (
-                        <p className="text-xs text-amber-600">Inactive</p>
+                        <p className="text-xs text-amber-600">
+                          {variant.autoDisabled
+                            ? "Inactive (stock sync)"
+                            : "Inactive"}
+                        </p>
+                      ) : null}
+                      {variant.needsReview ? (
+                        <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                          Needs review
+                          {variant.reviewReason
+                            ? `: ${variant.reviewReason}`
+                            : ""}
+                        </p>
                       ) : null}
                     </td>
                     <td className="px-4 py-3 text-zinc-500">{variant.sku}</td>
@@ -186,7 +198,11 @@ export function ProductEditForm({
                       {margin === null ? null : (
                         <span
                           className={`ml-2 text-xs ${
-                            margin < 0 ? "text-red-600" : "text-zinc-400"
+                            margin < 0
+                              ? "text-red-600"
+                              : variant.needsReview
+                                ? "text-amber-600"
+                                : "text-zinc-400"
                           }`}
                         >
                           {margin.toFixed(0)}% margin

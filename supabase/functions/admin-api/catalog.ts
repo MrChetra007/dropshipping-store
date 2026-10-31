@@ -7,9 +7,15 @@ import {
   searchProducts,
   type CjProduct,
   type CjProductSummary,
-  type CjVariant,
 } from "../_shared/cj/index.ts";
+import { variantCost, variantStock } from "../_shared/cj/inventory.ts";
+import { firstNumber } from "../_shared/cj/numbers.ts";
 import { HttpError } from "../_shared/http.ts";
+import {
+  loadPricing,
+  pricingSchema,
+  sellingPrice,
+} from "../_shared/pricing.ts";
 import type { createAdminClient } from "../_shared/supabase.ts";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -26,13 +32,6 @@ const pidSchema = z.string().trim().min(1).max(200);
 const importSchema = z
   .object({
     pids: z.array(pidSchema).min(1).max(20),
-  })
-  .strict();
-
-const pricingSchema = z
-  .object({
-    multiplier: z.number().positive().max(100),
-    round_to: z.number().min(0).max(0.99),
   })
   .strict();
 
@@ -85,46 +84,8 @@ export type CjImportResult = {
   failed: Array<{ pid: string; error: string }>;
 };
 
-function firstNumber(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const match = value.match(/-?\d+(?:\.\d+)?/);
-
-  if (!match) {
-    return null;
-  }
-
-  const parsed = Number(match[0]);
-
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-function sellingPrice(
-  cost: number,
-  multiplier: number,
-  roundTo: number,
-): number {
-  const rawCents = Math.round(cost * 100 * multiplier);
-  const roundCents = Math.round(roundTo * 100);
-
-  if (roundCents <= 0) {
-    return rawCents / 100;
-  }
-
-  const roundedCents =
-    Math.ceil((rawCents - roundCents) / 100) * 100 + roundCents;
-
-  return Math.max(roundCents, roundedCents) / 100;
 }
 
 function searchItem(product: CjProductSummary): AdminCjSearchItem {
@@ -197,19 +158,6 @@ function variantOptions(
   return { Variant: value };
 }
 
-function variantStock(variant: CjVariant): number | null {
-  const inventories = variant.inventories ?? [];
-
-  if (inventories.length === 0) {
-    return null;
-  }
-
-  return inventories.reduce(
-    (total, inventory) => total + (inventory.totalInventory ?? 0),
-    0,
-  );
-}
-
 function normalizeProduct(product: CjProduct): AdminCjProduct {
   const images = new Set<string>();
 
@@ -224,11 +172,7 @@ function normalizeProduct(product: CjProduct): AdminCjProduct {
   }
 
   const variants = (product.variants ?? []).map((variant) => {
-    const variantPrice =
-      variant.variantSellPrice && variant.variantSellPrice > 0
-        ? variant.variantSellPrice
-        : null;
-    const cost = variantPrice ?? firstNumber(product.sellPrice) ?? null;
+    const cost = variantCost(product, variant);
 
     if (variant.variantImage) {
       images.add(variant.variantImage);
@@ -406,26 +350,6 @@ async function findExisting(
   }
 
   return product ? { productId: product.id, title: product.title } : null;
-}
-
-async function loadPricing(admin: AdminClient) {
-  const { data, error } = await admin
-    .from("settings")
-    .select("value")
-    .eq("key", "pricing.markup")
-    .maybeSingle();
-
-  if (error) {
-    throw new HttpError(500, error.message);
-  }
-
-  const parsed = pricingSchema.safeParse(data?.value);
-
-  if (!parsed.success) {
-    throw new HttpError(500, "settings.pricing.markup is missing or invalid");
-  }
-
-  return parsed.data;
 }
 
 async function importOne(

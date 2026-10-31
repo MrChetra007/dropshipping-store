@@ -18,6 +18,9 @@ export type AdminProductDetail = {
     stock: number | null;
     weightG: number | null;
     isActive: boolean;
+    autoDisabled: boolean;
+    needsReview: boolean;
+    reviewReason: string | null;
     sortOrder: number;
     costPrice: number | null;
   }>;

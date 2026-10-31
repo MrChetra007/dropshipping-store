@@ -536,3 +536,107 @@ RPCs (`claim_supplier_order`, `mark_supplier_order_submitted`), and the step 9
 
 8. The refund email template (`sendRefundProcessedEmail`) is ready for step 11's
    refund flow; no refund action calls it yet.
+
+## Step 10 — Stock & cost sync
+
+`/api/cron/stock` runs every 6 hours and refreshes supplier stock and cost from
+CJ. The Next.js route is a thin, secret-protected wrapper around the `stock-sync`
+edge function.
+
+Flow:
+
+1. `/api/cron/stock` requires `Authorization: Bearer CRON_SECRET`, then calls
+   `stock-sync` with the same secret. `vercel.json` schedules it at `0 */6 * * *`.
+2. The worker groups imported CJ variants by `supplier_product_id` and syncs the
+   40 products that have waited longest since `supplier_variants.last_synced_at`
+   (`null` first). A larger catalog is covered over several runs.
+3. For each product it calls CJ `product/query` (the same endpoint used by the
+   importer) and updates, per variant:
+   - `product_variants.stock` from the sum of CJ `inventories[].totalInventory`
+   - `supplier_variants.cost_price` from `variantSellPrice` (falling back to the
+     product price), and `last_synced_at`
+4. A variant is treated as unavailable and disabled (`is_active = false`,
+   `auto_disabled_at` set) when CJ returns `stock = 0`, removes the variant from
+   the product, or reports the whole product as gone (`1602000`–`1602003`).
+   The worker re-enables only variants it disabled itself, and only when CJ
+   reports known stock again. Variants disabled by the owner stay disabled.
+5. If cost makes the margin fall below the configured threshold, the variant is
+   flagged for admin (`needs_review`, `review_reason`) and shown with a **Needs
+   review** badge on `/admin/products` and `/admin/products/[id]`.
+6. Optionally the worker reprices the variant with the normal markup rule
+   (`settings.pricing.markup`). Repricing is off by default so a supplier cost
+   change never silently changes a customer-facing price.
+
+Settings (`settings` table, key `pricing.margin_guard`):
+
+```json
+{
+  "min_margin_percent": 20,
+  "auto_reprice": false
+}
+```
+
+Margin is `(selling price - supplier cost) / selling price`. Set
+`auto_reprice` to `true` to let the sync recalculate the price from
+`pricing.markup` when the margin is too low. If the recalculated price still
+fails the threshold, the variant stays flagged.
+
+Apply the migration if your database already ran the original `schema.sql`:
+
+```bash
+npx supabase db push
+```
+
+or paste `supabase/migrations/20261031010000_stock_sync.sql` into the Supabase
+SQL editor. It adds `product_variants.auto_disabled_at`, `needs_review`,
+`review_reason`, the sync index, and the default `pricing.margin_guard` row. It
+is safe to run more than once.
+
+Deploy and test:
+
+```bash
+npx supabase functions deploy stock-sync
+npx supabase secrets set CRON_SECRET=... CJ_API_KEY=... --project-ref <your-project-ref>
+```
+
+1. Import a CJ product (step 4) so `supplier_variants` has rows.
+2. Run the cron route:
+
+   ```bash
+   curl -i http://localhost:3000/api/cron/stock \
+     -H "Authorization: Bearer $CRON_SECRET"
+   ```
+
+   Without the bearer it returns `401`. With it, the response includes
+   `checked`, `updated`, `disabled`, `enabled`, `flagged`, `repriced`, and
+   `failed` counts.
+
+3. To test with a mocked CJ response, temporarily stub `getProduct` in
+   `supabase/functions/_shared/stock/sync.ts` (or point the client at a local
+   mock) so one variant returns a different inventory, for example
+   `inventories: [{ countryCode: "CN", totalInventory: 7 }]`. Run the cron once
+   and check the database:
+
+   ```sql
+   select pv.sku, pv.stock, pv.is_active, pv.needs_review, pv.review_reason,
+          sv.cost_price, sv.last_synced_at
+     from public.product_variants pv
+     join public.supplier_variants sv on sv.variant_id = pv.id
+    where sv.supplier_product_id = '<CJ pid>';
+   ```
+
+   `stock` must match the mocked CJ inventory and `last_synced_at` must be set.
+   Open the product page: the storefront reads `product_variants.stock`, so the
+   stock line updates within that one cron run.
+
+4. Return `totalInventory: 0` in the mock and run again: the variant becomes
+   inactive and disappears from the storefront variant picker. Return a positive
+   inventory and run again: it is re-enabled.
+
+5. Raise the mocked `variantSellPrice` above the margin threshold and run again:
+   `needs_review` becomes `true` and the admin product pages show the reason.
+   With `auto_reprice: true`, the price is recalculated instead and the flag is
+   only set if the new price still misses the threshold.
+
+6. `stock-sync` is deployed with `verify_jwt = false`; it authenticates with
+   `CRON_SECRET` itself, like the fulfillment and tracking workers.

@@ -10,6 +10,7 @@ export {
   CjValidationError,
 } from "./errors.ts";
 export { createCjClient } from "./factory.ts";
+export { variantCost, variantStock } from "./inventory.ts";
 export { getBalance, createOrder, getOrder } from "./orders.ts";
 export type { CjCreateOrderInput, CjGetOrderInput } from "./orders.ts";
 export { getProduct, searchProducts } from "./products.ts";

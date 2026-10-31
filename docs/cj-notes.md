@@ -399,6 +399,10 @@ known statuses for the customer timeline.
   - `tracking.ts`: `getTrackingInfo`.
   - `../tracking/sync.ts`: polls active CJ orders, upserts `shipments`, updates
     order statuses, and sends the shipped email once per tracking number.
+  - `../stock/sync.ts`: refreshes `product_variants.stock` and
+    `supplier_variants.cost_price` from `/product/query`, disables variants CJ
+    reports as unavailable, and flags low-margin variants. It syncs the 40
+    products with the oldest `last_synced_at` per run to respect CJ rate limits.
   - `supabase-token-store.ts`: reads/writes `supplier_tokens` with the
     service-role client.
   - `factory.ts`: `createCjClient()` reads `CJ_API_KEY` from function secrets.

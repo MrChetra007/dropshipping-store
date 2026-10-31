@@ -422,3 +422,6 @@ verify_jwt = false
 
 [functions.tracking-sync]
 verify_jwt = false
+
+[functions.stock-sync]
+verify_jwt = false

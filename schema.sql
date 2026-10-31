@@ -167,6 +167,9 @@ create table public.product_variants (
   stock            integer,                           -- null = unknown / not tracked
   weight_g         integer,
   is_active        boolean not null default true,
+  auto_disabled_at timestamptz,                       -- set when the stock sync disabled it
+  needs_review     boolean not null default false,    -- e.g. margin below settings threshold
+  review_reason    text,
   sort_order       integer not null default 0,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
@@ -450,6 +453,7 @@ create index idx_products_category         on public.products (category_id);
 create index idx_products_search           on public.products using gin (search);
 create index idx_products_tags             on public.products using gin (tags);
 create index idx_variants_product          on public.product_variants (product_id);
+create index idx_supplier_variants_sync    on public.supplier_variants (supplier, last_synced_at);
 create index idx_images_product            on public.product_images (product_id, sort_order);
 create index idx_cart_items_cart           on public.cart_items (cart_id);
 create index idx_addresses_user            on public.addresses (user_id);
@@ -816,6 +820,7 @@ on conflict (id) do nothing;
 insert into public.settings (key, value) values
   ('public.store',        '{"name": "My Store", "currency": "USD", "support_email": "support@example.com"}'),
   ('pricing.markup',      '{"multiplier": 2.5, "round_to": 0.99}'),
+  ('pricing.margin_guard', '{"min_margin_percent": 20, "auto_reprice": false}'),
   ('fulfillment.cj',      '{"auto_place_orders": true, "default_shipping_method": "CJPacket", "max_attempts": 5}')
 on conflict (key) do nothing;
 

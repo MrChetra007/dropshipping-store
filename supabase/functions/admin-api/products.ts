@@ -41,6 +41,7 @@ export type AdminProductListItem = {
   activeVariantCount: number;
   minPrice: number | null;
   image: string | null;
+  needsReviewCount: number;
 };
 
 export type AdminProductDetail = {
@@ -63,6 +64,9 @@ export type AdminProductDetail = {
     stock: number | null;
     weightG: number | null;
     isActive: boolean;
+    autoDisabled: boolean;
+    needsReview: boolean;
+    reviewReason: string | null;
     sortOrder: number;
     costPrice: number | null;
   }>;
@@ -109,7 +113,7 @@ export async function listAdminProducts(
 
   const { data: variants, error: variantError } = await admin
     .from("product_variants")
-    .select("product_id,price,is_active,sort_order")
+    .select("product_id,price,is_active,sort_order,needs_review")
     .in("product_id", ids);
 
   if (variantError) {
@@ -128,7 +132,7 @@ export async function listAdminProducts(
 
   const variantsByProduct = new Map<
     string,
-    Array<{ price: number; isActive: boolean }>
+    Array<{ price: number; isActive: boolean; needsReview: boolean }>
   >();
   const imageByProduct = new Map<string, string>();
 
@@ -137,6 +141,7 @@ export async function listAdminProducts(
     bucket.push({
       price: asNumber(variant.price) ?? 0,
       isActive: Boolean(variant.is_active),
+      needsReview: Boolean(variant.needs_review),
     });
     variantsByProduct.set(variant.product_id, bucket);
   }
@@ -162,6 +167,9 @@ export async function listAdminProducts(
         .length,
       minPrice: prices.length > 0 ? Math.min(...prices) : null,
       image: imageByProduct.get(product.id) ?? null,
+      needsReviewCount: productVariants.filter(
+        (variant) => variant.needsReview,
+      ).length,
     };
   });
 }
@@ -193,7 +201,7 @@ export async function getAdminProduct(
   const { data: variants, error: variantError } = await admin
     .from("product_variants")
     .select(
-      "id,sku,title,price,compare_at_price,stock,weight_g,is_active,sort_order",
+      "id,sku,title,price,compare_at_price,stock,weight_g,is_active,auto_disabled_at,needs_review,review_reason,sort_order",
     )
     .eq("product_id", id)
     .order("sort_order", { ascending: true });
@@ -267,6 +275,9 @@ export async function getAdminProduct(
       stock: variant.stock,
       weightG: variant.weight_g,
       isActive: Boolean(variant.is_active),
+      autoDisabled: Boolean(variant.auto_disabled_at),
+      needsReview: Boolean(variant.needs_review),
+      reviewReason: variant.review_reason,
       sortOrder: variant.sort_order,
       costPrice: costByVariant.get(variant.id) ?? null,
     })),

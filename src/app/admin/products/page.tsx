@@ -20,6 +20,7 @@ type AdminProduct = {
   activeVariantCount: number;
   minPrice: number | null;
   image: string | null;
+  needsReviewCount: number;
 };
 
 type ProductsResponse = {
@@ -119,6 +120,11 @@ export default async function AdminProductsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-medium">{product.title}</p>
                       <StatusBadge status={product.status} />
+                      {product.needsReviewCount > 0 ? (
+                        <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                          {product.needsReviewCount} to review
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm text-zinc-500">
                       {product.variantCount} variant

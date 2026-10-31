@@ -134,6 +134,9 @@ export type Database = {
           stock: number | null;
           weight_g: number | null;
           is_active: boolean;
+          auto_disabled_at: string | null;
+          needs_review: boolean;
+          review_reason: string | null;
           sort_order: number;
           created_at: string;
           updated_at: string;
@@ -150,6 +153,9 @@ export type Database = {
           stock?: number | null;
           weight_g?: number | null;
           is_active?: boolean;
+          auto_disabled_at?: string | null;
+          needs_review?: boolean;
+          review_reason?: string | null;
           sort_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -166,6 +172,9 @@ export type Database = {
           stock?: number | null;
           weight_g?: number | null;
           is_active?: boolean;
+          auto_disabled_at?: string | null;
+          needs_review?: boolean;
+          review_reason?: string | null;
           sort_order?: number;
           created_at?: string;
           updated_at?: string;
