@@ -730,6 +730,7 @@ export type Database = {
           status: string;
           shipped_at: string | null;
           delivered_at: string | null;
+          notified_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -743,6 +744,7 @@ export type Database = {
           status?: string;
           shipped_at?: string | null;
           delivered_at?: string | null;
+          notified_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -756,6 +758,7 @@ export type Database = {
           status?: string;
           shipped_at?: string | null;
           delivered_at?: string | null;
+          notified_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -919,6 +922,41 @@ export type Database = {
           p_limit?: number;
         };
         Returns: Database["public"]["Tables"]["supplier_orders"]["Row"][];
+      };
+      claim_supplier_order: {
+        Args: {
+          p_id: string;
+        };
+        Returns: Database["public"]["Tables"]["supplier_orders"]["Row"];
+      };
+      mark_supplier_order_submitted: {
+        Args: {
+          p_supplier_order_id: string;
+          p_cj_order_id: string;
+          p_shipping_method: string | null;
+          p_supplier_cost: number | null;
+          p_request: Json | null;
+          p_response: Json | null;
+        };
+        Returns: undefined;
+      };
+      apply_supplier_order_update: {
+        Args: {
+          p_order_id: string;
+          p_supplier_order_id: string;
+          p_carrier: string | null;
+          p_tracking_number: string | null;
+          p_tracking_url: string | null;
+          p_shipment_status: string | null;
+          p_supplier_status: Database["public"]["Enums"]["supplier_order_status"];
+          p_order_status: Database["public"]["Enums"]["order_status"] | null;
+          p_fulfillment_status:
+            | Database["public"]["Enums"]["fulfillment_status"]
+            | null;
+          p_event_type: string | null;
+          p_event_message: string | null;
+        };
+        Returns: Array<{ shipment_id: string | null; should_notify: boolean }>;
       };
     };
     Enums: {

@@ -1,0 +1,432 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { callAdminApi, EdgeFunctionError } from "@/lib/supabase/functions";
+import { formatCents } from "@/lib/utils";
+
+import { RetryCjOrderButton } from "./retry-button";
+
+export const instant = false;
+
+export const metadata: Metadata = {
+  title: "Order | Admin | CJ Dropshipping Store",
+};
+
+type OrderItem = {
+  id: string;
+  title: string;
+  variantTitle: string | null;
+  sku: string | null;
+  imageUrl: string | null;
+  unitPriceCents: number;
+  quantity: number;
+  lineTotalCents: number;
+  createdAt: string;
+};
+
+type OrderEvent = {
+  id: number;
+  type: string;
+  message: string | null;
+  isPublic: boolean;
+  createdAt: string;
+};
+
+type SupplierOrder = {
+  id: string;
+  status: string;
+  supplierOrderId: string | null;
+  shippingMethod: string | null;
+  supplierCostCents: number | null;
+  attempts: number;
+  nextAttemptAt: string;
+  error: string | null;
+  updatedAt: string;
+};
+
+type AdminOrder = {
+  id: string;
+  orderNumber: string;
+  email: string;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  currency: string;
+  subtotalCents: number;
+  shippingCents: number;
+  discountCents: number;
+  taxCents: number;
+  totalCents: number;
+  shipName: string;
+  shipPhone: string | null;
+  shipLine1: string;
+  shipLine2: string | null;
+  shipCity: string;
+  shipState: string | null;
+  shipPostalCode: string;
+  shipCountryCode: string;
+  customerNote: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  items: OrderItem[];
+  events: OrderEvent[];
+  supplierOrder: SupplierOrder | null;
+};
+
+type OrderResponse = {
+  order: AdminOrder;
+};
+
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+const dateFormat = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function Badge({ value, tone }: { value: string; tone: "neutral" | "good" | "bad" }) {
+  const styles = {
+    neutral:
+      "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400",
+    good:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300",
+    bad: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300",
+  };
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${styles[tone]}`}
+    >
+      {value.replaceAll("_", " ")}
+    </span>
+  );
+}
+
+function toneFor(value: string): "neutral" | "good" | "bad" {
+  if (["paid", "submitted", "confirmed", "shipped", "delivered"].includes(value)) {
+    return "good";
+  }
+
+  if (["failed", "cancelled", "refunded"].includes(value)) {
+    return "bad";
+  }
+
+  return "neutral";
+}
+
+function Line({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="text-zinc-600 dark:text-zinc-400">{label}</span>
+      <span className={strong ? "font-semibold" : ""}>{value}</span>
+    </div>
+  );
+}
+
+export default async function AdminOrderPage({ params }: PageProps) {
+  const { id } = await params;
+  let order: AdminOrder | null = null;
+  let errorMessage: string | null = null;
+
+  try {
+    const data = await callAdminApi<OrderResponse>("orders.get", {
+      query: { id },
+    });
+    order = data.order;
+  } catch (error) {
+    if (error instanceof EdgeFunctionError && error.status === 404) {
+      notFound();
+    }
+
+    errorMessage = error instanceof Error ? error.message : "Unknown error";
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="space-y-4">
+        <Link
+          href="/admin/orders"
+          className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          ← Back to orders
+        </Link>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <p className="font-medium">Could not load the order</p>
+          <p className="mt-1">{errorMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    notFound();
+  }
+
+  const supplier = order.supplierOrder;
+  const balanceProblem = supplier?.error?.startsWith("cj_insufficient_balance");
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Link
+          href="/admin/orders"
+          className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          ← Back to orders
+        </Link>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {order.orderNumber}
+            </h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {order.email} · placed {dateFormat.format(new Date(order.createdAt))}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge value={order.status} tone={toneFor(order.status)} />
+            <Badge
+              value={order.paymentStatus}
+              tone={toneFor(order.paymentStatus)}
+            />
+            <Badge
+              value={order.fulfillmentStatus}
+              tone={toneFor(order.fulfillmentStatus)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+          <h2 className="font-medium">Shipping</h2>
+          <div className="mt-3 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="font-medium text-zinc-900 dark:text-zinc-100">
+              {order.shipName}
+            </p>
+            <p>{order.shipLine1}</p>
+            {order.shipLine2 ? <p>{order.shipLine2}</p> : null}
+            <p>
+              {order.shipCity}
+              {order.shipState ? `, ${order.shipState}` : ""}{" "}
+              {order.shipPostalCode}
+            </p>
+            <p>{order.shipCountryCode}</p>
+            {order.shipPhone ? <p>{order.shipPhone}</p> : null}
+          </div>
+          {order.customerNote ? (
+            <div className="mt-4 rounded-md bg-zinc-50 p-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+              <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                Customer note
+              </p>
+              <p className="mt-1 whitespace-pre-line">{order.customerNote}</p>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+          <h2 className="font-medium">Totals</h2>
+          <div className="mt-3 space-y-1 text-sm">
+            <Line
+              label="Subtotal"
+              value={formatCents(order.subtotalCents, order.currency)}
+            />
+            <Line
+              label="Shipping"
+              value={formatCents(order.shippingCents, order.currency)}
+            />
+            {order.discountCents > 0 ? (
+              <Line
+                label="Discount"
+                value={`−${formatCents(order.discountCents, order.currency)}`}
+              />
+            ) : null}
+            <Line
+              label="Tax"
+              value={formatCents(order.taxCents, order.currency)}
+            />
+            <div className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+              <Line
+                label="Total"
+                value={formatCents(order.totalCents, order.currency)}
+                strong
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="font-medium">CJ fulfillment</h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              The CJ order is created automatically after payment. Failed orders
+              can be retried here.
+            </p>
+          </div>
+          {supplier ? (
+            <Badge value={supplier.status} tone={toneFor(supplier.status)} />
+          ) : (
+            <Badge value="not queued" tone="neutral" />
+          )}
+        </div>
+
+        {supplier ? (
+          <div className="mt-4 space-y-3 text-sm">
+            {balanceProblem ? (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                CJ balance is insufficient. Top up the CJ account, then retry
+                this order.
+              </p>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                <p>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    CJ order id:
+                  </span>{" "}
+                  {supplier.supplierOrderId ?? "—"}
+                </p>
+                <p>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    Shipping method:
+                  </span>{" "}
+                  {supplier.shippingMethod ?? "—"}
+                </p>
+                <p>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    Attempts:
+                  </span>{" "}
+                  {supplier.attempts}
+                </p>
+                <p>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    Supplier cost:
+                  </span>{" "}
+                  {supplier.supplierCostCents === null
+                    ? "—"
+                    : formatCents(supplier.supplierCostCents, order.currency)}
+                </p>
+              </div>
+              <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                <p>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    Next attempt:
+                  </span>{" "}
+                  {dateFormat.format(new Date(supplier.nextAttemptAt))}
+                </p>
+                <p>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    Updated:
+                  </span>{" "}
+                  {dateFormat.format(new Date(supplier.updatedAt))}
+                </p>
+              </div>
+            </div>
+
+            {supplier.error ? (
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                {supplier.error}
+              </p>
+            ) : null}
+
+            {supplier.status === "failed" ? (
+              <RetryCjOrderButton orderId={order.id} />
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-zinc-500">
+            No CJ order row exists yet. It is created when payment is confirmed.
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <h2 className="border-b border-zinc-200 px-5 py-3 font-medium dark:border-zinc-800">
+          Items
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+              <tr>
+                <th className="px-5 py-2 font-medium">Item</th>
+                <th className="px-5 py-2 font-medium">SKU</th>
+                <th className="px-5 py-2 text-right font-medium">Qty</th>
+                <th className="px-5 py-2 text-right font-medium">Unit</th>
+                <th className="px-5 py-2 text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {order.items.map((item) => (
+                <tr key={item.id}>
+                  <td className="px-5 py-3">
+                    <p className="font-medium">{item.title}</p>
+                    {item.variantTitle && item.variantTitle !== "Default" ? (
+                      <p className="text-xs text-zinc-500">
+                        {item.variantTitle}
+                      </p>
+                    ) : null}
+                  </td>
+                  <td className="px-5 py-3 text-zinc-600 dark:text-zinc-400">
+                    {item.sku ?? "—"}
+                  </td>
+                  <td className="px-5 py-3 text-right">{item.quantity}</td>
+                  <td className="px-5 py-3 text-right">
+                    {formatCents(item.unitPriceCents, order.currency)}
+                  </td>
+                  <td className="px-5 py-3 text-right font-medium">
+                    {formatCents(item.lineTotalCents, order.currency)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <h2 className="border-b border-zinc-200 px-5 py-3 font-medium dark:border-zinc-800">
+          Timeline
+        </h2>
+        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          {order.events.length === 0 ? (
+            <li className="px-5 py-3 text-sm text-zinc-500">No events yet.</li>
+          ) : (
+            order.events.map((event) => (
+              <li
+                key={event.id}
+                className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">{event.type.replaceAll("_", " ")}</p>
+                  {event.message ? (
+                    <p className="text-zinc-600 dark:text-zinc-400">
+                      {event.message}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="text-right text-xs text-zinc-500">
+                  <p>{dateFormat.format(new Date(event.createdAt))}</p>
+                  <p>{event.isPublic ? "Public" : "Internal"}</p>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+    </div>
+  );
+}

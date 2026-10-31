@@ -1,5 +1,9 @@
 import { requireAdmin } from "../_shared/auth.ts";
 import {
+  triggerFulfillment,
+  waitUntil,
+} from "../_shared/fulfillment-trigger.ts";
+import {
   errorResponse,
   handleOptions,
   HttpError,
@@ -7,6 +11,11 @@ import {
 } from "../_shared/http.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 import { getCjProduct, importCatalog, searchCatalog } from "./catalog.ts";
+import {
+  getAdminOrder,
+  listAdminOrders,
+  retrySupplierOrder,
+} from "./orders.ts";
 import {
   getAdminProduct,
   listAdminProducts,
@@ -75,6 +84,36 @@ Deno.serve(async (request) => {
       return json(
         await updateAdminProduct(admin, await readJson(request)),
       );
+    }
+
+    if (request.method === "GET" && action === "orders.list") {
+      return json({ orders: await listAdminOrders(admin) });
+    }
+
+    if (request.method === "GET" && action === "orders.get") {
+      return json(
+        await getAdminOrder(admin, url.searchParams.get("id") ?? ""),
+      );
+    }
+
+    if (request.method === "POST" && action === "orders.retryFulfillment") {
+      const payload = await readJson(request);
+      const orderId =
+        payload &&
+        typeof payload === "object" &&
+        !Array.isArray(payload) &&
+        typeof (payload as { orderId?: unknown }).orderId === "string"
+          ? (payload as { orderId: string }).orderId
+          : "";
+
+      if (!orderId) {
+        throw new HttpError(400, "orderId is required");
+      }
+
+      const result = await retrySupplierOrder(admin, orderId);
+      waitUntil(triggerFulfillment(result.supplierOrderId));
+
+      return json({ ok: true });
     }
 
     if (request.method === "GET" && action === "settings") {

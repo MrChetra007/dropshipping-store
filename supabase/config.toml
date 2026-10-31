@@ -414,3 +414,11 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# Worker functions authenticate with CRON_SECRET themselves, so the Supabase
+# gateway must not require a Supabase JWT for them.
+[functions.fulfill-order]
+verify_jwt = false
+
+[functions.tracking-sync]
+verify_jwt = false
