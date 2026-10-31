@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 
 import { CheckoutForm } from "@/components/shop/checkout-form";
 import { getProfile, getUser } from "@/lib/auth";
@@ -14,6 +15,8 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutPage() {
+  await connection();
+
   const [cart, rates, user, profile] = await Promise.all([
     getCart(),
     getShippingEstimates(),

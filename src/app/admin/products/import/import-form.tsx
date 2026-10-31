@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +23,20 @@ export function ImportSelectionForm({
     importCjProducts,
     initialState,
   );
+  const [selectedCount, setSelectedCount] = useState(0);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      action={formAction}
+      className="space-y-4"
+      onChange={(event) => {
+        setSelectedCount(
+          event.currentTarget.querySelectorAll<HTMLInputElement>(
+            'input[name="pids"]:checked',
+          ).length,
+        );
+      }}
+    >
       {children}
 
       {state.error ? (
@@ -93,12 +104,12 @@ export function ImportSelectionForm({
         </div>
       ) : null}
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending || count === 0}>
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-zinc-200 bg-white/95 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <Button type="submit" disabled={pending || selectedCount === 0}>
           {pending ? "Importing…" : "Import selected"}
         </Button>
         <span className="text-sm text-zinc-500">
-          {count} result{count === 1 ? "" : "s"}. Select up to 20 per import.
+          {selectedCount} of {count} selected. Select up to 20 per import.
         </span>
       </div>
     </form>

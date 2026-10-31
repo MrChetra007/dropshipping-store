@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 
 import { Button } from "@/components/ui/button";
 import { getProfile, requireUser } from "@/lib/auth";
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountPage() {
+  await connection();
+
   const user = await requireUser();
   const profile = await getProfile();
 

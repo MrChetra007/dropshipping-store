@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { logout } from "@/lib/auth-actions";
 export const instant = false;
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
+  await connection();
+
   const { user, profile } = await requireAdmin();
 
   return (
