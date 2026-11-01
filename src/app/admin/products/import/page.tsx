@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { callAdminApi } from "@/lib/supabase/functions";
 import { sanitizeDescription } from "@/lib/sanitize";
 
+import { ImportSearchForm } from "./search-form";
 import { ImportSelectionForm } from "./import-form";
 import { ImportSingleForm } from "./import-single-form";
 import { PreviewGallery } from "./preview-gallery";
@@ -133,25 +134,7 @@ export default async function ImportProductsPage({
         </p>
       </div>
 
-      <form
-        action="/admin/products/import"
-        method="get"
-        className="flex flex-wrap gap-2"
-      >
-        <input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search CJ products by keyword"
-          className="h-11 min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-300"
-        />
-        <button
-          type="submit"
-          className="inline-flex h-11 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          Search
-        </button>
-      </form>
+      <ImportSearchForm query={query} />
 
       {query ? (
         <Suspense

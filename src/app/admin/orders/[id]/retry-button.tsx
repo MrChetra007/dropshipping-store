@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { retryCjOrder, type RetryFulfillmentState } from "./actions";
 
 export function RetryCjOrderButton({ orderId }: { orderId: string }) {
@@ -13,13 +14,14 @@ export function RetryCjOrderButton({ orderId }: { orderId: string }) {
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="orderId" value={orderId} />
-      <button
+      <Button
         type="submit"
-        disabled={pending}
-        className="inline-flex h-10 items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        loading={pending}
+        loadingLabel="Queueing retry…"
+        className="h-10 px-4"
       >
-        {pending ? "Queueing retry…" : "Retry CJ order"}
-      </button>
+        Retry CJ order
+      </Button>
       {state?.ok === false ? (
         <p
           role="alert"

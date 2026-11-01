@@ -57,10 +57,12 @@ export function ImportSingleForm({ pid }: { pid: string }) {
 
       <Button
         type="submit"
-        disabled={pending || Boolean(imported) || Boolean(skipped)}
+        loading={pending}
+        loadingLabel="Importing…"
+        disabled={Boolean(imported) || Boolean(skipped)}
         className="w-full"
       >
-        {pending ? "Importing…" : imported ? "Imported" : "Import this product"}
+        {imported ? "Imported" : "Import this product"}
       </Button>
     </form>
   );

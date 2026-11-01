@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { CheckoutForm } from "@/components/shop/checkout-form";
+import { ButtonLink } from "@/components/ui/button-link";
 import { getProfile, getUser } from "@/lib/auth";
 import { getCart } from "@/lib/cart";
 import { getShippingEstimates } from "@/lib/catalog";
@@ -33,12 +33,13 @@ export default async function CheckoutPage() {
           <p className="mt-1 text-sm text-zinc-500">
             Add a product before checking out.
           </p>
-          <Link
+          <ButtonLink
             href="/products"
-            className="mt-5 inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            variant="primary"
+            className="mt-5"
           >
             Shop products
-          </Link>
+          </ButtonLink>
         </div>
       </main>
     );
@@ -53,12 +54,13 @@ export default async function CheckoutPage() {
           <p className="mt-1">
             Remove unavailable items from your cart before checking out.
           </p>
-          <Link
+          <ButtonLink
             href="/cart"
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+            variant="primary"
+            className="mt-4"
           >
             Review cart
-          </Link>
+          </ButtonLink>
         </div>
       </main>
     );
@@ -78,12 +80,13 @@ export default async function CheckoutPage() {
             Shipping and totals are confirmed on the server before payment.
           </p>
         </div>
-        <Link
+        <ButtonLink
           href="/cart"
-          className="text-sm text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+          variant="ghost"
+          size="sm"
         >
           Back to cart
-        </Link>
+        </ButtonLink>
       </div>
 
       <div className="mt-8">

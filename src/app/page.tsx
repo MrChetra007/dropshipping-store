@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { ProductGrid } from "@/components/shop/product-grid";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   getShippingEstimates,
   getStoreSettings,
@@ -176,12 +177,13 @@ export default async function Home() {
               Hand-picked products our customers love.
             </p>
           </div>
-          <Link
+          <ButtonLink
             href="/products"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            variant="secondary"
+            size="sm"
           >
             View all products →
-          </Link>
+          </ButtonLink>
         </div>
         <div className="mt-6">
           <ProductGrid

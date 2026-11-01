@@ -105,8 +105,13 @@ export function ImportSelectionForm({
       ) : null}
 
       <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-zinc-200 bg-white/95 py-3 shadow-[0_-8px_24px_-16px_rgba(0,0,0,0.25)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-        <Button type="submit" disabled={pending || selectedCount === 0}>
-          {pending ? "Importing…" : "Import selected"}
+        <Button
+          type="submit"
+          loading={pending}
+          loadingLabel="Importing…"
+          disabled={selectedCount === 0}
+        >
+          Import selected
         </Button>
         <span className="text-sm text-zinc-500">
           {selectedCount} of {count} selected. Select up to 20 per import.

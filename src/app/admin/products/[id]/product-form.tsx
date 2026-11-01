@@ -338,8 +338,8 @@ export function ProductEditForm({
       </section>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-5 dark:border-zinc-800">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save product"}
+        <Button type="submit" loading={pending} loadingLabel="Saving…">
+          Save product
         </Button>
         <Link
           href="/admin/products"

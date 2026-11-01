@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ButtonLink } from "@/components/ui/button-link";
 import type { AdminProductDetail } from "@/lib/admin-products-types";
 import { sanitizeDescription } from "@/lib/sanitize";
 import { callAdminApi, EdgeFunctionError } from "@/lib/supabase/functions";
@@ -38,12 +38,14 @@ export default async function EditProductPage({
   if (errorMessage || !product) {
     return (
       <div className="space-y-4">
-        <Link
+        <ButtonLink
           href="/admin/products"
-          className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          variant="ghost"
+          size="sm"
+          className="w-fit"
         >
           ← Back to products
-        </Link>
+        </ButtonLink>
         <p className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           Could not load product: {errorMessage ?? "Product not found"}
         </p>
@@ -54,12 +56,14 @@ export default async function EditProductPage({
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <Link
+        <ButtonLink
           href="/admin/products"
-          className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          variant="ghost"
+          size="sm"
+          className="w-fit"
         >
           ← Back to products
-        </Link>
+        </ButtonLink>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">

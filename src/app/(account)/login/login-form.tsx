@@ -46,8 +46,13 @@ export function LoginForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Signing in…" : "Sign in"}
+      <Button
+        type="submit"
+        className="w-full"
+        loading={pending}
+        loadingLabel="Signing in…"
+      >
+        Sign in
       </Button>
 
       <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">

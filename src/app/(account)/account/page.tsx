@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { getProfile, requireUser } from "@/lib/auth";
 import { logout } from "@/lib/auth-actions";
 
@@ -48,9 +48,12 @@ export default async function AccountPage() {
           </Link>
         ) : null}
         <form action={logout}>
-          <Button type="submit" className="bg-transparent text-zinc-900 hover:bg-zinc-100 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-900">
+          <FormSubmitButton
+            pendingLabel="Logging out…"
+            className="bg-transparent text-zinc-900 hover:bg-zinc-100 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-900"
+          >
             Log out
-          </Button>
+          </FormSubmitButton>
         </form>
       </div>
     </main>

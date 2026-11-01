@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 import { useCartFeedback } from "@/components/shop/cart-feedback";
 import { PriceTag } from "@/components/shop/price-tag";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export type PickerVariant = {
@@ -37,6 +39,16 @@ export function VariantPicker({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { notifyAdded } = useCartFeedback();
   const selected = variants.find((variant) => variant.id === selectedId) ?? initial;
+
+  useEffect(() => {
+    if (status !== "added") {
+      return;
+    }
+
+    const timer = setTimeout(() => setStatus("idle"), 4000);
+
+    return () => clearTimeout(timer);
+  }, [status]);
 
   const optionGroups = useMemo(() => {
     const groups = new Map<string, string[]>();
@@ -261,8 +273,10 @@ export function VariantPicker({
             type="button"
             onClick={addToCart}
             disabled={!available || status === "adding"}
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            aria-busy={status === "adding"}
+            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
+            {status === "adding" ? <Spinner /> : null}
             {status === "adding"
               ? "Adding…"
               : available
@@ -276,6 +290,18 @@ export function VariantPicker({
             className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
           >
             {errorMessage}
+          </p>
+        ) : null}
+        {status === "added" ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+          >
+            Added to cart.{" "}
+            <Link href="/cart" className="font-medium underline underline-offset-2">
+              View cart
+            </Link>
           </p>
         ) : null}
       </div>

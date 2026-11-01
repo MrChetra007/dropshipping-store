@@ -60,8 +60,13 @@ export function SignupForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Creating account…" : "Create account"}
+      <Button
+        type="submit"
+        className="w-full"
+        loading={pending}
+        loadingLabel="Creating account…"
+      >
+        Create account
       </Button>
 
       <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">

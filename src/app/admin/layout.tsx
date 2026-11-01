@@ -2,7 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "@/lib/auth-actions";
 
@@ -64,12 +64,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               {initials}
             </span>
             <form action={logout}>
-              <Button
-                type="submit"
+              <FormSubmitButton
+                pendingLabel="Logging out…"
                 className="h-9 bg-transparent px-3 text-zinc-900 hover:bg-zinc-100 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-900"
               >
                 Log out
-              </Button>
+              </FormSubmitButton>
             </form>
           </div>
         </div>

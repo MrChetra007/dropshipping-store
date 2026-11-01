@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import { Input } from "@/components/ui/input";
+import { ButtonLink } from "@/components/ui/button-link";
 import { callAdminApi } from "@/lib/supabase/functions";
 import { cn } from "@/lib/utils";
+
+import { AdminProductSearchForm } from "./search-form";
 
 export const instant = false;
 
@@ -122,46 +124,13 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
             Imported CJ products. Drafts are hidden from the storefront.
           </p>
         </div>
-        <Link
-          href="/admin/products/import"
-          className="inline-flex h-11 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
+        <ButtonLink href="/admin/products/import" variant="primary">
           Import products
-        </Link>
+        </ButtonLink>
       </div>
 
       <div className="space-y-3">
-        <form
-          action="/admin/products"
-          method="get"
-          className="flex flex-wrap gap-2"
-        >
-          <Input
-            type="search"
-            name="q"
-            defaultValue={query}
-            placeholder="Search by title or slug"
-            aria-label="Search products"
-            className="min-w-0 flex-1 sm:max-w-sm"
-          />
-          {status ? (
-            <input type="hidden" name="status" value={status} />
-          ) : null}
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
-            Search
-          </button>
-          {query || status ? (
-            <Link
-              href="/admin/products"
-              className="inline-flex h-11 items-center px-2 text-sm text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              Clear
-            </Link>
-          ) : null}
-        </form>
+        <AdminProductSearchForm query={query} status={status} />
 
         <div className="flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((filter) => {
@@ -257,7 +226,9 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                       /products/{product.slug}
                     </p>
                   </div>
-                  <span className="text-sm text-zinc-500">Edit</span>
+                  <span className="rounded-full border border-zinc-300 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                    Edit
+                  </span>
                 </Link>
               </li>
             ))}

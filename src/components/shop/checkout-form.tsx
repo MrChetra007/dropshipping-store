@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { formatCents } from "@/lib/utils";
 import type { Cart } from "@/types/cart";
 
@@ -456,8 +457,10 @@ export function CheckoutForm({
         <button
           type="submit"
           disabled={submitting || !selectedRate}
-          className="flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          aria-busy={submitting}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
+          {submitting ? <Spinner /> : null}
           {submitting ? "Starting checkout…" : "Continue to payment"}
         </button>
 

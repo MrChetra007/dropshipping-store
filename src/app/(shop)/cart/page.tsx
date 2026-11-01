@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CartItems } from "@/components/shop/cart-items";
+import { ButtonLink } from "@/components/ui/button-link";
 import { getCart } from "@/lib/cart";
 import { formatCents } from "@/lib/utils";
 import type { Cart } from "@/types/cart";
@@ -63,12 +64,13 @@ export default async function CartPage() {
             {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}
           </p>
         </div>
-        <Link
+        <ButtonLink
           href="/products"
-          className="text-sm text-zinc-500 underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+          variant="secondary"
+          size="sm"
         >
           Continue shopping
-        </Link>
+        </ButtonLink>
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.4fr_0.6fr]">

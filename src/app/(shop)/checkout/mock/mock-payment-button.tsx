@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { Spinner } from "@/components/ui/spinner";
 import { simulatePayment, type MockPaymentState } from "./actions";
 
 export function MockPaymentButton({
@@ -26,8 +27,10 @@ export function MockPaymentButton({
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex h-11 items-center justify-center rounded-md bg-emerald-700 px-5 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+        aria-busy={pending}
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-700 px-5 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
       >
+        {pending ? <Spinner /> : null}
         {pending ? "Sending test webhook…" : "Simulate successful payment"}
       </button>
       {state?.error ? (

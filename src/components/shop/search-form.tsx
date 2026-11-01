@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { startNavigation } from "@/lib/navigation-events";
 
 export function SearchForm({
   defaultValue = "",
@@ -15,8 +17,10 @@ export function SearchForm({
   placeholder?: string;
 }) {
   const router = useRouter();
+  const [isPending, beginTransition] = useTransition();
   const [value, setValue] = useState(defaultValue);
   const [syncedDefault, setSyncedDefault] = useState(defaultValue);
+  const [debouncing, setDebouncing] = useState(false);
   const lastNavigated = useRef(defaultValue.trim());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -24,6 +28,10 @@ export function SearchForm({
     setSyncedDefault(defaultValue);
     setValue(defaultValue);
   }
+
+  useEffect(() => {
+    lastNavigated.current = defaultValue.trim();
+  }, [defaultValue]);
 
   useEffect(() => {
     return () => {
@@ -52,16 +60,23 @@ export function SearchForm({
   const navigate = (next: string) => {
     const trimmed = next.trim();
 
-    if (trimmed === lastNavigated.current) {
-      return;
-    }
+    setDebouncing(false);
 
-    lastNavigated.current = trimmed;
-    router.replace(buildHref(next), { scroll: false });
+    beginTransition(() => {
+      if (trimmed === lastNavigated.current) {
+        router.refresh();
+        return;
+      }
+
+      lastNavigated.current = trimmed;
+      startNavigation();
+      router.replace(buildHref(next), { scroll: false });
+    });
   };
 
   const change = (next: string) => {
     setValue(next);
+    setDebouncing(true);
 
     if (timer.current) {
       clearTimeout(timer.current);
@@ -78,6 +93,8 @@ export function SearchForm({
     setValue("");
     navigate("");
   };
+
+  const searching = debouncing || isPending;
 
   return (
     <form
@@ -103,8 +120,19 @@ export function SearchForm({
           onChange={(event) => change(event.target.value)}
           placeholder={placeholder}
           aria-label="Search products"
+          aria-busy={searching}
           className="pr-10"
         />
+        {searching ? (
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-zinc-400 ${
+              value ? "right-10" : "right-3"
+            }`}
+          >
+            <Spinner />
+          </span>
+        ) : null}
         {value ? (
           <button
             type="button"
@@ -118,10 +146,16 @@ export function SearchForm({
       </div>
       <button
         type="submit"
-        className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        disabled={searching}
+        aria-busy={searching}
+        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
       >
-        Search
+        {isPending ? <Spinner /> : null}
+        {isPending ? "Searching…" : "Search"}
       </button>
+      <span role="status" aria-live="polite" className="sr-only">
+        {searching ? "Searching products…" : ""}
+      </span>
     </form>
   );
 }
