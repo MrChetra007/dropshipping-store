@@ -1,22 +1,30 @@
 # CJ Dropshipping Store
 
-Storefront built with Next.js (App Router), TypeScript, Tailwind CSS, and Supabase.
-Products are sourced from CJ Dropshipping; orders are fulfilled through the CJ API.
+Storefront built as a Vite + React 19 + TypeScript SPA with React Router,
+Tailwind CSS v4, and TanStack Query, on top of Supabase (Postgres, Auth, RLS,
+Edge Functions). Products are sourced from CJ Dropshipping; orders are
+fulfilled through the CJ API.
+
+Previously the frontend was Next.js (App Router). It was replaced by the SPA in
+this repo; see `plan.md` for the migration record.
 
 ## Stack
 
-- Next.js 16 + React 19, TypeScript strict
+- Vite + React 19 SPA, TypeScript strict, React Router v7
+- TanStack Query for server state
 - Tailwind CSS v4
-- Supabase (Postgres, Auth, RLS)
+- Supabase (Postgres, Auth, RLS, Edge Functions)
 - Zod validation
-- Payment provider abstraction (`mock` until the owner picks a provider)
+- Payment provider abstraction (`manual` bank transfer; `mock` for local dev)
 
 ## Setup
 
 1. Install dependencies: `npm install`
-2. Copy `.env.example` to `.env.local` and fill in the values.
-3. Run `schema.sql` once in the Supabase SQL Editor.
-4. Start the dev server: `npm run dev`
+2. Copy `.env.example` to `.env.local` and fill in the values
+   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SITE_URL`).
+3. Run `schema.sql` once in the Supabase SQL Editor (or `npx supabase db push`
+   for the incremental migrations).
+4. Start the dev server: `npm run dev` (http://localhost:5173)
 
 After signing up in the app, make yourself an admin:
 
@@ -24,12 +32,28 @@ After signing up in the app, make yourself an admin:
 update public.profiles set role = 'admin' where email = 'you@example.com';
 ```
 
+## Architecture
+
+One data path: the browser talks to Supabase directly.
+
+- Public catalog reads use the **anon key + RLS** (`src/lib/catalog.ts`).
+- Cart identity is a UUID persisted in `localStorage` (`src/features/cart/`).
+- All privileged work (admin CRUD, CJ import/fulfillment, checkout,
+  email, webhook) runs in **Supabase Edge Functions** under
+  `supabase/functions/`. The browser calls them with the signed-in user's JWT
+  (`src/lib/functions.ts`: `callEdgeFunction`, `callAdminApi`).
+- Auth state lives in `src/features/auth/` (`AuthProvider`, `RequireAuth`,
+  `RequireAdmin`); sign-in/up/out are plain `supabase.auth` calls.
+- The SPA is a static build (`dist/`) and can be hosted anywhere; `vercel.json`
+  contains only the SPA rewrite. Update Supabase Auth `site_url` and the
+  redirect allow-list to the deployed domain plus `/auth/callback`.
+
 ## Edge Functions (privileged backend)
 
-The Next.js app **never** holds `SUPABASE_SERVICE_ROLE_KEY`. All privileged
+The frontend **never** holds `SUPABASE_SERVICE_ROLE_KEY`. All privileged
 (supplier cost, admin CRUD, fulfillment, webhooks, cron) operations run in
-Supabase Edge Functions under `supabase/functions/`, where the service-role key
-is injected by the Supabase runtime.
+Supabase Edge Functions, where the service-role key is injected by the
+Supabase runtime.
 
 - `admin-api` — admin-only actions (`session`, `settings`, CJ catalog search,
   product import, product editing, and order detail/retry). Verifies the
@@ -46,13 +70,13 @@ is injected by the Supabase runtime.
   `supabase/config.toml`).
 - `tracking-sync` — cron/internal worker that polls CJ for active supplier
   orders, upserts `shipments`, updates order statuses, adds public timeline
-  events, and sends the shipped email once per tracking number. It uses the
-  same `CRON_SECRET` bearer auth (`verify_jwt = false`).
-- Shared helpers live in `supabase/functions/_shared/`.
-- The CJ client lives in `supabase/functions/_shared/cj/`. `CJ_API_KEY` is a
-  Supabase function secret and is never added to the Next.js environment.
-- Next.js calls functions through `src/lib/supabase/functions.ts`
-  (`callEdgeFunction`, `callEdgeFunctionRaw`, `callAdminApi`).
+  events, and sends the shipped email once per tracking number.
+- `stock-sync` — cron/internal worker that refreshes supplier stock and cost
+  from CJ, disables sold-out variants, and flags margin problems.
+- `cj-webhook` — CJ payment/status callbacks.
+- Shared helpers live in `supabase/functions/_shared/`; the CJ client is in
+  `supabase/functions/_shared/cj/`. `CJ_API_KEY` is a Supabase function secret
+  and is never part of the frontend environment.
 
 Deploy:
 
@@ -71,7 +95,7 @@ Set the function secrets for deployed functions:
 ```bash
 npx supabase secrets set CJ_API_KEY=... --project-ref <your-project-ref>
 npx supabase secrets set \
-  PAYMENT_PROVIDER=mock \
+  PAYMENT_PROVIDER=manual \
   PAYMENT_WEBHOOK_SECRET=... \
   RESEND_API_KEY=... \
   EMAIL_FROM="My Store <orders@yourdomain.com>" \
@@ -83,582 +107,48 @@ npx supabase secrets set \
 For local `supabase start`, put the same values in
 `supabase/functions/.env`.
 
-The Next.js environment holds **only** public values:
+The frontend environment holds **only** public values:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-NEXT_PUBLIC_SITE_URL
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+VITE_SITE_URL
 ```
 
 `PAYMENT_PROVIDER`, `PAYMENT_WEBHOOK_SECRET`, `PAYMENT_API_KEY`, and
 `CRON_SECRET` are Supabase function secrets only. Checkout, mock webhook
 signing, and cron authentication all run inside `store-api` or the worker
-functions, so the Next.js app never reads those values.
+functions, so the SPA never reads those values.
 
-Cron functions reuse `CRON_SECRET`; payment and CJ webhooks verify the provider
-signature. No extra shared secret is needed.
+## Cron
 
-## Step 1 — Project setup
+Workers are scheduled with Supabase Cron (`pg_cron` + `pg_net`) POSTing
+directly to the functions with `Authorization: Bearer <CRON_SECRET>` (secret in
+Supabase Vault):
 
-Test: open `http://localhost:3000`. The page reads the `public.store`
-setting from Supabase with the server (anon) client and shows the store name,
-currency, and support email.
+- `fulfill-order`: every 5 minutes (`*/5 * * * *`)
+- `tracking-sync`: every 3 hours (`0 */3 * * *`)
+- `stock-sync`: every 6 hours (`0 */6 * * *`)
 
-Commands:
+Payment webhooks point directly at
+`https://<project>.supabase.co/functions/v1/store-api?action=payment.webhook`;
+`store-api` verifies the provider signature over the raw body.
+
+## Verification
 
 ```bash
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm run build
 ```
 
-## Step 2 — Auth + roles
-
-- Email/password signup, login, and logout via Supabase Auth.
-- `getUser()`, `getProfile()`, `requireUser()`, and `requireAdmin()` live in
-  `src/lib/auth.ts`.
-- Profile rows are created by the `handle_new_user` trigger from `schema.sql`.
-
-Test:
-
-1. Visit `/signup`, create an account, then log in at `/login`.
-2. Open `/account` — it shows your email, profile name, and role.
-3. Promote yourself:
-
-   ```sql
-   update public.profiles set role = 'admin' where email = 'you@example.com';
-   ```
-
-4. Log out and back in, then open `/admin` — it loads only for admins.
-5. A non-admin visiting `/admin` is redirected to `/`.
-6. Logged-out users visiting `/account` or `/admin` are redirected to `/login`.
-
-If email confirmation is enabled in Supabase, signup sends a confirmation link
-that returns through `/auth/callback`. Otherwise signup logs you in directly.
-
-## Step 3 — CJ client
-
-- The shared CJ client is in `supabase/functions/_shared/cj/`.
-- Auth uses `CJ_API_KEY` only. Tokens are cached in `supplier_tokens` for the
-  deployed edge runtime.
-- Request API notes and verified CJ docs details are in `docs/cj-notes.md`.
-
-Run the smoke test with a real CJ API key:
-
-```powershell
-$env:CJ_API_KEY="..."
-npm run cj:smoke
-```
-
-It prints the CJ balance, then 5 products with variant IDs and prices. The
-script uses an in-memory token store; the deployed client uses
-`supplier_tokens`.
-
-## Step 4 — Product import (admin)
-
-Deploy the updated admin function after pulling this step:
-
-```bash
-npx supabase functions deploy admin-api
-```
-
-Admin pages:
-
-- `/admin/products` — imported products with status, variant count, and price.
-- `/admin/products/import` — search the CJ catalog (`/product/listV2`), preview
-  a product and its CJ costs/variants (`/product/query`), then select up to 20
-  products and import them.
-- `/admin/products/[id]` — edit title, description HTML, category, status,
-  variant selling prices, and image order.
-
-Import behavior:
-
-- Creates `products` as `draft`, `product_variants` (selling price = CJ cost ×
-  `settings.pricing.markup.multiplier`, rounded up to `round_to`), `product_images`,
-  and `supplier_variants` with CJ `pid`/`vid` and cost.
-- Re-importing the same CJ product is skipped.
-- Failed imports clean up the partially created product.
-- CJ cost is only returned to admin actions and never selected by the public
-  storefront queries.
-
-Public verification pages:
-
-- `/products` lists only `active` products.
-- `/products/[slug]` renders only `active` products and sanitizes description
-  HTML with `sanitize-html` before rendering.
-
-Test:
-
-1. Log in as an admin and open `/admin/products/import`.
-2. Search for a product, preview its variants, select it, and click
-   **Import selected**.
-3. Open `/admin/products`, edit the product, set **Status** to `active`, and save.
-4. Open `/products` and `/products/[slug]` in a private window — the active
-   product is visible.
-5. Confirm no public response includes `supplier_variants`, `cost_price`, or CJ
-   variant IDs. Only the admin editor shows cost.
-
-## Step 5 — Storefront
-
-Storefront pages are server-rendered and use the public (anon) Supabase client,
-so only RLS-visible catalog rows are read. No supplier cost data is fetched or
-rendered.
-
-- `/` — store name, featured products (falls back to newest), category tiles,
-  delivery window, and free-shipping threshold from `shipping_rates`.
-- `/products` — search (Postgres `products.search` tsvector), category filter,
-  and pagination. Filters live in the URL so they are shareable and work
-  without JavaScript.
-- `/products/[slug]` — image gallery, variant picker, stock status, shipping
-  estimates, sanitized description, related products, `generateMetadata`,
-  canonical URL, OpenGraph/Twitter tags, and Product JSON-LD.
-- `/categories/[slug]` — category landing page with the same product grid and
-  pagination.
-
-Shared storefront code:
-
-- `src/lib/catalog.ts` — public catalog queries and DTOs (no cost fields).
-- `src/lib/utils.ts` — cents conversion, money formatting, slugify, HTML
-  stripping.
-- `src/components/shop/` — product card, grid, gallery, variant picker,
-  search form, category chips, pagination.
-
-Test:
-
-1. Set a product to `active` in `/admin/products/[id]` and give it a category.
-2. Open `/products` — search by title and filter by category; the URL keeps
-   `q`, `category`, and `page`.
-3. Open a product page — pick different variants and confirm price and stock
-   update. View source: title, description, canonical URL, JSON-LD, and product
-   content are present in the server HTML.
-4. Open `/categories/[slug]` for the assigned category.
-5. Run Lighthouse mobile on a product page (production build: `npm run build`
-   then `npm start`) and confirm performance is at least 85.
-
-
-## Step 6 — Cart + checkout + order creation
-
-All privileged cart and order writes run in the `store-api` edge function. The
-Next.js routes only validate input and forward the request.
-
-- Cart identity is the httpOnly `cart_id` cookie (30 days). Guests get a cart;
-  logged-in users get their Supabase user id attached when they add an item.
-- `/api/cart` supports `add`, `update`, and `remove`. The server loads the
-  variant, checks it is active and in stock, and stores only
-  `variant_id` + `quantity`.
-- `/api/checkout` validates the address with zod, then calls
-  `store-api` `checkout.create`. The edge function:
-  1. loads the cart and current variant prices,
-  2. picks the shipping rate by country (falling back to `*`),
-  3. validates the discount code and its limits,
-  4. computes subtotal, shipping, discount, and total in integer cents,
-  5. inserts `orders` (`pending_payment`), `order_items`, and
-     `order_item_costs` from `supplier_variants.cost_price`,
-  6. writes an internal `margin_guard` event when cost + allocated shipping is
-     greater than or equal to the selling price.
-- The Next route then calls `store-api` `checkout.startPayment`. The edge
-  function selects the provider, builds the success/cancel URLs from the
-  `SITE_URL` function secret, saves `payment_provider` +
-  `provider_checkout_id`, and clears the cart items. The cart is cleared only
-  after the payment checkout is attached, so a failed retry does not lose the
-  cart. If the provider cannot start a checkout, the edge function deletes the
-  pending order.
-- `mock` is the only provider until the owner makes the payment decision. It
-  redirects to the dev-only `/checkout/mock` page.
-
-Test:
-
-1. Deploy the function (`npx supabase functions deploy store-api`) and set the
-   function secrets listed above.
-2. Add a product to the cart, change the quantity, remove an item, and confirm
-   the cart totals update.
-3. Start checkout and confirm the order row is `pending_payment` with the
-   expected subtotal/shipping/total in `numeric(12,2)`.
-4. Send a checkout request with extra `price`/`total` fields — they are ignored;
-   the server still uses DB prices.
-5. Try an out-of-stock variant and confirm checkout is rejected.
-
-## Step 7 — Payment webhook
-
-`POST /api/webhooks/payment` reads the **raw** request body and forwards it,
-byte-for-byte, with the provider signature headers to `store-api`
-`payment.webhook`. The edge function:
-
-1. verifies the signature with `PAYMENT_PROVIDER` + `PAYMENT_WEBHOOK_SECRET`
-   before writing anything (invalid signature → `401`, no rows written),
-2. inserts `webhook_events` and returns `200 { "status": "duplicate" }` on the
-   unique `(provider, event_id)` conflict,
-3. for `paid`, calls `mark_order_paid(...)`, which atomically inserts
-   `payments` (unique provider payment id), marks the order paid, queues one
-   `supplier_orders` row, and adds the public `paid` timeline event,
-4. updates the webhook event to `processed`, `ignored`, or `failed`,
-5. sends the confirmation email through Resend and kicks the fulfillment
-   worker without blocking the webhook response.
-
-`mismatch` and `ignored` leave the order for manual review and create internal
-`order_events` rows; the admin dashboard shows them in step 11. A duplicate
-payment id never sends a second email and never creates a second supplier order.
-
-The mock page has a **Simulate successful payment** button. It calls
-`store-api` `payment.mockPay`; the edge function loads the order total from the
-database, signs a deterministic `payment.paid` event (`eventId` and `paymentId`
-are derived from the order id) with `PAYMENT_WEBHOOK_SECRET`, and sends it
-through the real webhook verification path. Click it twice to test replay
-idempotency. The browser and Next.js never see the webhook secret.
-
-Test:
-
-1. Set `PAYMENT_PROVIDER=mock` and `PAYMENT_WEBHOOK_SECRET` as Supabase function
-   secrets (local functions read `supabase/functions/.env`).
-2. Complete a checkout with the mock provider, then click **Simulate successful
-   payment**. Confirm the success page shows `Payment confirmed`.
-3. Check the database:
-
-   ```sql
-   select count(*) from public.payments where order_id = '<order-id>';       -- 1
-   select count(*) from public.supplier_orders where order_id = '<order-id>'; -- 1
-   select status, error from public.webhook_events order by received_at desc;
-   ```
-
-4. Click the button again. The response is `duplicate`; the counts above stay
-   at 1 and no second email is sent.
-5. Send an unsigned request and confirm `401` with no new `webhook_events` row:
-
-   ```bash
-   curl -i -X POST http://localhost:3000/api/webhooks/payment \
-     -H "content-type: application/json" \
-     -H "x-mock-signature: bad" \
-     --data '{"eventId":"bad","type":"payment.paid","orderId":"<order-id>","paymentId":"bad","amountCents":1,"currency":"USD"}'
-   ```
-
-6. For an amount mismatch, sign a payload with a different amount and send it.
-   The order stays `pending_payment`, a `payment_mismatch` internal event is
-   added, and the webhook event records the review note.
-7. If `RESEND_API_KEY` and `EMAIL_FROM` are set, confirm exactly one
-   confirmation email. Otherwise the function logs that email is not configured
-   and continues.
-
-The fulfillment kick targets the `fulfill-order` worker added in step 8. Until
-that function is deployed the supplier order stays `queued` and the step 8 cron
-picks it up.
-
-## Step 8 — Fulfillment to CJ
-
-Paid orders are submitted to CJ by the `fulfill-order` edge function. The Next.js
-app never talks to CJ directly.
-
-Flow:
-
-1. `mark_order_paid` creates one `supplier_orders` row (`queued`).
-2. The payment webhook kicks `fulfill-order` immediately with the supplier order
-   id. `/api/cron/fulfill` runs every 5 minutes as a safety net.
-3. The worker claims a row with `claim_supplier_order(id)` (webhook kick) or
-   `claim_supplier_orders(5)` (cron). Both increment `attempts` and push
-   `next_attempt_at` forward, so two workers cannot process the same row.
-4. `processSupplierOrder` loads the order, items, and `supplier_variants`, builds
-   the CJ `createOrderV2` payload (`vid`, quantities, customer address,
-   `payType=2`), and calls CJ.
-5. On success `mark_supplier_order_submitted` atomically stores
-   `supplier_order_id`, `request`, `response`, `supplier_cost_total`, sets the
-   supplier row to `submitted`, the order to `fulfillment_status = 'submitted'`,
-   and adds the public **Order sent to warehouse** event.
-6. On failure the row stays `queued` with an exponential `next_attempt_at`
-   (5, 10, 20, 40 minutes…). After `settings.fulfillment.cj.max_attempts` it
-   becomes `failed`, the order becomes `fulfillment_status = 'failed'`, and an
-   internal `fulfillment_failed` event is added.
-7. CJ `1604000` / `1604001` (insufficient or restricted balance) fails
-   immediately with a clear `fulfillment_balance_error` event instead of looping.
-   Permanent errors (missing variant mapping, invalid payload, bad API key) also
-   fail immediately.
-
-Settings (`settings` table, key `fulfillment.cj`):
-
-```json
-{
-  "auto_place_orders": true,
-  "default_shipping_method": "CJPacket Ordinary",
-  "max_attempts": 5,
-  "from_country_code": "CN",
-  "sandbox": false
-}
-```
-
-`default_shipping_method` must be a CJ `logisticName`. The seed value is
-`CJPacket`; replace it with a logistics name that CJ returns for your account
-(for example `CJPacket Ordinary`). Set `sandbox: true` to send `isSandbox=1` if
-sandbox orders are enabled on the CJ account. The `orderNumber` sent to CJ is our
-own `orders.order_number`, so a retried request is idempotent (`1603003`
-re-queries the existing CJ order instead of creating a second one).
-
-Admin:
-
-- `/admin/orders` lists recent orders with payment, fulfillment, and CJ status.
-- `/admin/orders/[id]` shows the CJ order id, attempts, next attempt, supplier
-  cost, error, and a **Retry CJ order** button for failed rows. Retrying resets
-  attempts to 0, sets the row back to `queued`, and kicks the worker.
-
-Cron:
-
-- `src/app/api/cron/fulfill/route.ts` forwards the caller's `Authorization`
-  header to the worker. It never reads `CRON_SECRET` itself.
-- `vercel.json` schedules it every 5 minutes. Vercel sends `Authorization:
-  Bearer <CRON_SECRET>` when `CRON_SECRET` is set in the Vercel project's
-  **server-side** environment. To keep the secret only in Supabase, schedule
-  `fulfill-order` with Supabase `pg_cron`/`pg_net` instead; the worker accepts
-  the same bearer either way. Tracking/stock cron entries are added in steps 9
-  and 10.
-- `fulfill-order` is deployed with `verify_jwt = false`, so the Supabase gateway
-  does not reject the non-JWT cron secret. The function checks the secret itself.
-
-Deploy and test:
-
-```bash
-npx supabase functions deploy fulfill-order
-npx supabase secrets set CRON_SECRET=... CJ_API_KEY=... --project-ref <your-project-ref>
-```
-
-1. Set `CRON_SECRET` as a Supabase function secret (and in
-   `supabase/functions/.env` for local functions). Do not add it to
-   `.env.local`.
-2. Complete a checkout and simulate a successful payment (step 7).
-3. Check the supplier row:
-
-   ```sql
-   select status, attempts, supplier_order_id, supplier_cost_total, error
-     from public.supplier_orders
-    where order_id = '<order-id>';
-   ```
-
-   It should be `submitted` with a CJ order id and stored request/response.
-
-4. Confirm exactly one row exists for the order and that
-   `orders.fulfillment_status = 'submitted'`.
-5. Open `/admin/orders/<order-id>` and confirm the CJ panel and the public
-   timeline event.
-6. To test the cron path, queue a row and call:
-
-   ```bash
-   curl -i http://localhost:3000/api/cron/fulfill \
-     -H "Authorization: Bearer $CRON_SECRET"
-   ```
-
-   A request without the bearer returns `401`.
-7. Transient CJ failures (network errors, `429`, or `5xx`) leave the row
-   `queued` with an error and a future `next_attempt_at`; after `max_attempts`
-   it becomes `failed`. Permanent failures (invalid payload, missing variant
-   mapping, bad API key) fail immediately. To exercise the retry path, block
-   the CJ host or return `503` from a test proxy, then fix the cause and click
-   **Retry CJ order** on the admin page.
-8. To test the balance alert, use a CJ account with a zero balance. The row
-   becomes `failed` immediately with `cj_insufficient_balance` and the admin
-   page shows the red balance alert.
-
-## Step 9 — Tracking, order page, emails
-
-The `tracking-sync` edge function keeps shipments and customer statuses up to
-date. The Next.js app only calls it through a protected cron route.
-
-Flow:
-
-1. `/api/cron/tracking` forwards the caller's `Authorization` header to
-   `tracking-sync`, which verifies `CRON_SECRET` itself. `vercel.json` runs it
-   every 3 hours.
-2. The worker loads `supplier_orders` in `submitted`, `confirmed`, or `shipped`
-   with a CJ order id.
-3. For each row it calls CJ `getOrderDetail` and, when a tracking number exists,
-   `logistic/trackInfo` for the latest tracking status. CJ errors on one order
-   do not stop the rest of the batch.
-4. `apply_supplier_order_update` atomically:
-   - upserts `shipments` on `(order_id, tracking_number)`
-   - moves `supplier_orders.status` forward (`confirmed`, `shipped`,
-     `delivered`, `cancelled`)
-   - moves `orders.status` / `orders.fulfillment_status` forward without
-     downgrading a delivered or refunded order
-   - adds one public timeline event per tracking number (`order_shipped`,
-     `order_delivered`, `order_cancelled`, `order_processing`)
-5. When a new tracking number appears, the worker sends the **Your order has
-   shipped** email and then sets `shipments.notified_at`. A retry after a failed
-   send leaves `notified_at` empty, so the next run retries without sending a
-   second email for the same tracking number.
-6. `/orders/[orderNumber]` shows the public timeline, items, shipping address,
-   totals, and tracking links. Guests use `?token=<order access token>`; signed-in
-   customers can open the same URL without a token and `order.preview` authorizes
-   by `user_id`. A wrong token or another customer's order returns `404`.
-7. Emails live in `supabase/functions/_shared/email.ts` (the service-role key and
-   `RESEND_API_KEY` never reach Next.js): order confirmation, shipped, and
-   refund processed. Order links in emails use `SITE_URL` and include the guest
-   access token. The spec's `src/lib/email.ts` path is intentionally replaced by
-   this edge helper so the Resend key stays a Supabase function secret.
-
-Deploy and test:
-
-```bash
-npx supabase functions deploy tracking-sync
-npx supabase secrets set SITE_URL=https://yourdomain.com --project-ref <your-project-ref>
-```
-
-If your database already ran the original `schema.sql`, apply the
-non-destructive migration instead of re-running the reset script:
-
-```bash
-npx supabase db push
-```
-
-or paste `supabase/migrations/20261031000000_fulfillment_tracking.sql` into the
-Supabase SQL editor. It adds `shipments.notified_at`, the step 8 fulfillment
-RPCs (`claim_supplier_order`, `mark_supplier_order_submitted`), and the step 9
-`apply_supplier_order_update` RPC. It is safe to run more than once.
-
-1. Make sure `SITE_URL` is set in the function secrets (or
-   `supabase/functions/.env` locally) and `RESEND_API_KEY` / `EMAIL_FROM` are
-   configured if you want real emails.
-2. Simulate a CJ shipment by setting a tracking number on the CJ order (CJ
-   sandbox or a test order), or temporarily mock `getOrderDetail` to return
-   `orderStatus: "SHIPPED"` and a `trackNumber`.
-3. Run the cron route manually:
-
-   ```bash
-   curl -i http://localhost:3000/api/cron/tracking \
-     -H "Authorization: Bearer $CRON_SECRET"
-   ```
-
-   Without the bearer it returns `401`. With it, the response includes
-   `checked`, `updated`, `emailed`, and `failed` counts.
-
-4. Check the database:
-
-   ```sql
-   select tracking_number, carrier, status, notified_at
-     from public.shipments
-    where order_id = '<order-id>';
-
-   select status, fulfillment_status from public.orders where id = '<order-id>';
-   ```
-
-   The order should be `shipped` / `shipped`, and the shipment should have
-   `notified_at` set after the email is sent.
-
-5. Open the customer page with the order token:
-
-   ```text
-   http://localhost:3000/orders/<order-number>?token=<access-token>
-   ```
-
-   The timeline shows **Your order has shipped** and the tracking link appears.
-   Remove or change the token and the page returns `404`.
-
-6. Run the cron a second time. The shipment row must not change, and
-   `notified_at` must stay set (no second email). A second tracking number on
-   the same order produces its own shipment row and its own email.
-
-7. Signed-in customers can open `/orders/<order-number>` without a token. A
-   different customer's order number returns `404`.
-
-8. The refund email template (`sendRefundProcessedEmail`) is ready for step 11's
-   refund flow; no refund action calls it yet.
-
-## Step 10 — Stock & cost sync
-
-`/api/cron/stock` runs every 6 hours and refreshes supplier stock and cost from
-CJ. The Next.js route is a thin, secret-protected wrapper around the `stock-sync`
-edge function.
-
-Flow:
-
-1. `/api/cron/stock` forwards the caller's `Authorization` header to
-   `stock-sync`, which verifies `CRON_SECRET` itself. `vercel.json` schedules it
-   at `0 */6 * * *`.
-2. The worker groups imported CJ variants by `supplier_product_id` and syncs the
-   40 products that have waited longest since `supplier_variants.last_synced_at`
-   (`null` first). A larger catalog is covered over several runs.
-3. For each product it calls CJ `product/query` (the same endpoint used by the
-   importer) and updates, per variant:
-   - `product_variants.stock` from the sum of CJ `inventories[].totalInventory`
-   - `supplier_variants.cost_price` from `variantSellPrice` (falling back to the
-     product price), and `last_synced_at`
-4. A variant is treated as unavailable and disabled (`is_active = false`,
-   `auto_disabled_at` set) when CJ returns `stock = 0`, removes the variant from
-   the product, or reports the whole product as gone (`1602000`–`1602003`).
-   The worker re-enables only variants it disabled itself, and only when CJ
-   reports known stock again. Variants disabled by the owner stay disabled.
-5. If cost makes the margin fall below the configured threshold, the variant is
-   flagged for admin (`needs_review`, `review_reason`) and shown with a **Needs
-   review** badge on `/admin/products` and `/admin/products/[id]`.
-6. Optionally the worker reprices the variant with the normal markup rule
-   (`settings.pricing.markup`). Repricing is off by default so a supplier cost
-   change never silently changes a customer-facing price.
-
-Settings (`settings` table, key `pricing.margin_guard`):
-
-```json
-{
-  "min_margin_percent": 20,
-  "auto_reprice": false
-}
-```
-
-Margin is `(selling price - supplier cost) / selling price`. Set
-`auto_reprice` to `true` to let the sync recalculate the price from
-`pricing.markup` when the margin is too low. If the recalculated price still
-fails the threshold, the variant stays flagged.
-
-Apply the migration if your database already ran the original `schema.sql`:
-
-```bash
-npx supabase db push
-```
-
-or paste `supabase/migrations/20261031010000_stock_sync.sql` into the Supabase
-SQL editor. It adds `product_variants.auto_disabled_at`, `needs_review`,
-`review_reason`, the sync index, and the default `pricing.margin_guard` row. It
-is safe to run more than once.
-
-Deploy and test:
-
-```bash
-npx supabase functions deploy stock-sync
-npx supabase secrets set CRON_SECRET=... CJ_API_KEY=... --project-ref <your-project-ref>
-```
-
-1. Import a CJ product (step 4) so `supplier_variants` has rows.
-2. Run the cron route:
-
-   ```bash
-   curl -i http://localhost:3000/api/cron/stock \
-     -H "Authorization: Bearer $CRON_SECRET"
-   ```
-
-   Without the bearer it returns `401`. With it, the response includes
-   `checked`, `updated`, `disabled`, `enabled`, `flagged`, `repriced`, and
-   `failed` counts.
-
-3. To test with a mocked CJ response, temporarily stub `getProduct` in
-   `supabase/functions/_shared/stock/sync.ts` (or point the client at a local
-   mock) so one variant returns a different inventory, for example
-   `inventories: [{ countryCode: "CN", totalInventory: 7 }]`. Run the cron once
-   and check the database:
-
-   ```sql
-   select pv.sku, pv.stock, pv.is_active, pv.needs_review, pv.review_reason,
-          sv.cost_price, sv.last_synced_at
-     from public.product_variants pv
-     join public.supplier_variants sv on sv.variant_id = pv.id
-    where sv.supplier_product_id = '<CJ pid>';
-   ```
-
-   `stock` must match the mocked CJ inventory and `last_synced_at` must be set.
-   Open the product page: the storefront reads `product_variants.stock`, so the
-   stock line updates within that one cron run.
-
-4. Return `totalInventory: 0` in the mock and run again: the variant becomes
-   inactive and disappears from the storefront variant picker. Return a positive
-   inventory and run again: it is re-enabled.
-
-5. Raise the mocked `variantSellPrice` above the margin threshold and run again:
-   `needs_review` becomes `true` and the admin product pages show the reason.
-   With `auto_reprice: true`, the price is recalculated instead and the flag is
-   only set if the new price still misses the threshold.
-
-6. `stock-sync` is deployed with `verify_jwt = false`; it authenticates with
-   `CRON_SECRET` itself, like the fulfillment and tracking workers.
+Manual smoke checklist: browse/search/filter/paginate products; add/update/
+remove cart; checkout with manual payment → instructions page → admin mark
+paid; guest order page with token (wrong token → 404); sign up / log in /
+log out; admin import a CJ product, publish it, see it on the storefront; retry
+a failed CJ order; `PAYMENT_PROVIDER=mock` double-click is duplicate-safe;
+workers still respond; `grep -r service_role dist/` finds nothing.
+
+Deeper backend behavior docs (CJ integration, fulfillment, tracking, stock
+sync, emails) live in `docs/` and the SQL in `schema.sql` +
+`supabase/migrations/`.

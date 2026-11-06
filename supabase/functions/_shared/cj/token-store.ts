@@ -1,4 +1,5 @@
 export type CjTokens = {
+  openId: string | null;
   accessToken: string;
   refreshToken: string;
   accessExpiresAt: Date;

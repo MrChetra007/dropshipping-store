@@ -1,3 +1,9 @@
+import type { AdminUser } from "../_shared/auth.ts";
+import { sendOrderConfirmationEmail } from "../_shared/email.ts";
+import {
+  triggerFulfillment,
+  waitUntil,
+} from "../_shared/fulfillment-trigger.ts";
 import { HttpError } from "../_shared/http.ts";
 import { toCents } from "../_shared/money.ts";
 import type { createAdminClient } from "../_shared/supabase.ts";
@@ -279,4 +285,129 @@ export async function retrySupplierOrder(
   }
 
   return { supplierOrderId: supplierOrder.id };
+}
+
+type ManualPaymentOrderRow = {
+  id: string;
+  order_number: string;
+  status: string;
+  payment_status: string;
+  currency: string;
+  total: unknown;
+};
+
+export type ManualPaymentResult = {
+  status: "paid" | "duplicate" | "mismatch" | "ignored";
+  orderId: string;
+  orderNumber: string;
+  supplierOrderId: string | null;
+};
+
+/**
+ * Confirm a bank transfer from the admin order page. This runs through the same
+ * atomic `mark_order_paid` RPC as a provider webhook, so it queues the CJ order
+ * and is idempotent. The deterministic manual payment id means clicking twice
+ * cannot create a second payment.
+ */
+export async function markOrderPaidManually(
+  admin: AdminClient,
+  orderId: string,
+  adminUser: AdminUser,
+  reference: string | null,
+): Promise<ManualPaymentResult> {
+  const id = requireOrderId(orderId);
+
+  const { data: order, error } = await admin
+    .from("orders")
+    .select("id,order_number,status,payment_status,currency,total")
+    .eq("id", id)
+    .maybeSingle<ManualPaymentOrderRow>();
+
+  if (error) {
+    throw new HttpError(500, error.message);
+  }
+
+  if (!order) {
+    throw new HttpError(404, "Order not found");
+  }
+
+  if (order.status !== "pending_payment" || order.payment_status === "paid") {
+    throw new HttpError(409, "Order is not awaiting payment");
+  }
+
+  const { data, error: paidError } = await admin.rpc("mark_order_paid", {
+    p_order_id: order.id,
+    p_provider: "manual",
+    p_provider_payment_id: `manual_${order.id}`,
+    p_amount: Number(order.total),
+    p_currency: order.currency,
+    p_raw: {
+      source: "admin_manual",
+      reference,
+      marked_by: adminUser.id,
+      marked_by_email: adminUser.email,
+    },
+  });
+
+  if (paidError) {
+    throw new HttpError(500, `Could not mark the order paid: ${paidError.message}`);
+  }
+
+  const status = String(data);
+
+  if (
+    status !== "paid" &&
+    status !== "duplicate" &&
+    status !== "mismatch" &&
+    status !== "ignored"
+  ) {
+    throw new HttpError(500, `Unexpected mark_order_paid result: ${status}`);
+  }
+
+  let supplierOrderId: string | null = null;
+
+  if (status === "paid") {
+    const { error: eventError } = await admin.from("order_events").insert({
+      order_id: order.id,
+      type: "payment_confirmed_manual",
+      message: reference
+        ? `Manual payment confirmed (reference: ${reference})`
+        : "Manual payment confirmed by an admin",
+      is_public: false,
+      data: {
+        reference,
+        marked_by: adminUser.id,
+      },
+    });
+
+    if (eventError) {
+      console.error(
+        `Could not add the manual payment event for order ${order.id}: ${eventError.message}`,
+      );
+    }
+
+    const { data: supplierOrder } = await admin
+      .from("supplier_orders")
+      .select("id")
+      .eq("order_id", order.id)
+      .eq("supplier", "cj")
+      .maybeSingle<{ id: string }>();
+
+    supplierOrderId = supplierOrder?.id ?? null;
+
+    // Match the payment webhook: do not block the admin response on email or
+    // the CJ worker kick.
+    waitUntil(sendOrderConfirmationEmail(admin, order.id));
+
+    if (supplierOrderId) {
+      waitUntil(triggerFulfillment(supplierOrderId));
+    }
+  }
+
+  return {
+    status,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    supplierOrderId,
+  };
 }

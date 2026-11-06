@@ -249,8 +249,11 @@ because it already returns variants and inventory.
 Payment modes:
 
 - `payType=2`: create and pay from CJ balance in one call.
-- `payType=3`: create only; call `POST /shopping/pay/payBalanceV2` later.
+- `payType=3`: create only; call `POST /shopping/pay/payBalance` with `orderId`
+  or `POST /shopping/pay/payBalanceV2` with `shipmentOrderId` later.
 - `payType=1`: legacy page payment, deprecated. Do not use.
+- Sandbox orders (`isSandbox=1`) use simulated payment automatically, regardless
+  of `payType`.
 
 Minimal body:
 
@@ -348,6 +351,77 @@ Order status values:
 
 `1604000` means insufficient balance.
 
+### Pay a draft order
+
+- `POST /shopping/pay/payBalance` body `{ "orderId": "<CJ order id>" }`
+- `POST /shopping/pay/payBalanceV2` body
+  `{ "shipmentOrderId": "<parent order id>", "payId": "optional" }`
+- Both return `data: null` on success.
+- Use `payBalanceV2` when `createOrderV2` returned a `shipmentOrderId` (parent
+  order with sub-orders); otherwise `payBalance` with `orderId` is enough.
+
+## Webhooks
+
+Official docs (verified 2026-11-01):
+
+- Configure with `POST /webhook/set`. The `product`, `stock`, `order`, and
+  `logistics` topics are required in the same request; each topic uses
+  `{ "type": "ENABLE" | "CANCEL", "callbackUrls": ["https://..."] }`.
+- Callback must be public HTTPS and return HTTP 200 within 3 seconds.
+- Signature header: `sign`.
+- Algorithm: `Base64(HMAC-SHA256(secret = openId string, message = raw body))`.
+  This is **not** the API key, and it is **not** hex-encoded.
+- `openId` comes from `POST /authentication/getAccessToken` and must be stored.
+- Dedupe with `messageId`; CJ does not retry failed pushes. Sustained failures
+  trigger an auto-close, so the receiver stores the event, returns `200`, and
+  reconciles via the query APIs if processing fails.
+- `messageType=ORDER_CONNNECTED` means CJ re-linked the products and the real CJ
+  order id is in `params.cjOrderId`; treat it like an order update.
+- Order payloads use `payDate` (not `paymentDate`); `getOrderDetail` uses
+  `paymentDate`.
+- Response body: `{"code":200,"result":true,"message":"success"}`.
+
+Order payload shape:
+
+```json
+{
+  "messageId": "...",
+  "type": "ORDER",
+  "messageType": "UPDATE",
+  "params": {
+    "orderNumber": "ST-1001",
+    "cjOrderId": "210823100016290555",
+    "orderStatus": "SHIPPED",
+    "logisticName": "CJPacket Ordinary",
+    "trackNumber": "9261...",
+    "trackingUrl": "https://...",
+    "trackingProvider": "USPS",
+    "orderItems": []
+  }
+}
+```
+
+Logistics payload shape:
+
+```json
+{
+  "messageId": "...",
+  "type": "LOGISTIC",
+  "messageType": "UPDATE",
+  "params": {
+    "orderId": "210823100016290555",
+    "trackingNumber": "9261...",
+    "trackingStatus": 12,
+    "trackingProvider": "USPS",
+    "logisticName": "CJPacket Ordinary",
+    "trackingUrl": "https://..."
+  }
+}
+```
+
+`trackingStatus` numeric values: 0 no info, 1 warehouse shipped, 10 out for
+delivery, 11 ready for pickup, 12 delivered, 13 failed/exception, 14 return.
+
 ## Logistics
 
 ### Freight calculation
@@ -395,7 +469,18 @@ known statuses for the customer timeline.
   - `client.ts`: auth, token refresh, 1 req/s gate, 15 s timeout, retries with
     exponential backoff and jitter, typed errors.
   - `products.ts`: `searchProducts`, `getProduct`.
-  - `orders.ts`: `createOrder`, `getOrder`, `getBalance`.
+  - `orders.ts`: `createOrder` (payType=3), `getOrder`, `getBalance`,
+    `payBalance`, `payBalanceV2`.
+  - `../fulfillment/process.ts`: creates the CJ draft first, persists the CJ
+    order id, checks the wallet balance, then pays with `payBalanceV2`
+    (`shipmentOrderId`) or `payBalance` (`orderId`). Retries pay the existing
+    draft instead of creating a duplicate. Sandbox orders skip the real balance
+    check and accept CJ's simulated payment.
+  - `webhook.ts`: verifies the official Base64 HMAC-SHA256 `sign` header with
+    the stored openId, dedupes `messageId`, and applies ORDER/LOGISTIC updates.
+  - `supabase/functions/cj-webhook/`: public webhook endpoint
+    (`verify_jwt = false`).
+  - `webhook-api.ts`: `setWebhook` for `POST /webhook/set`.
   - `tracking.ts`: `getTrackingInfo`.
   - `../tracking/sync.ts`: polls active CJ orders, upserts `shipments`, updates
     order statuses, and sends the shipped email once per tracking number.
@@ -424,6 +509,25 @@ Set the key as a Supabase secret for deployed functions:
 npx supabase secrets set CJ_API_KEY=... --project-ref <project-ref>
 ```
 
+Apply the wallet/webhook migrations and deploy the webhook:
+
+```bash
+npx supabase db push --project-ref <project-ref>
+npx supabase functions deploy cj-webhook --project-ref <project-ref>
+```
+
+Enable sandbox orders while testing (CJ simulates payment, so no wallet funds
+are needed). Merge this into the existing `fulfillment.cj` settings row:
+
+```sql
+insert into public.settings (key, value)
+values ('fulfillment.cj', '{"sandbox": true}'::jsonb)
+on conflict (key) do update
+  set value = public.settings.value || excluded.value;
+```
+
+Set `sandbox` back to `false` before live orders.
+
 Run the local smoke test (PowerShell):
 
 ```powershell
@@ -438,13 +542,22 @@ $env:CJ_SMOKE_KEYWORD="hoodie"
 npm run cj:smoke
 ```
 
+Register the order/logistics webhook (deployed HTTPS URL):
+
+```powershell
+$env:CJ_API_KEY="..."
+$env:CJ_WEBHOOK_URL="https://<project-ref>.supabase.co/functions/v1/cj-webhook"
+npm run cj:webhook
+```
+
 The smoke test prints the CJ balance, then 5 products with their variant IDs,
 SKUs, variant labels, and prices.
 
 ## Open items
 
 - The smoke test passes against the live CJ account. The account balance is
-  `$0.00`, so paid CJ order placement will fail until the owner tops up.
+  `$0.00`, so paid CJ order placement will fail until the owner tops up. In
+  sandbox mode CJ simulates payment, so the flow can be tested without funds.
 - Product import uses `/product/listV2` for search and `/product/query` for
   detail. Import stores CJ `pid`/`vid` and `cost_price` in `supplier_variants`;
   supplier costs are never returned by public storefront queries.
@@ -453,5 +566,12 @@ SKUs, variant labels, and prices.
 - CJ account level determines QPS. The client defaults to 1 req/s, which is safe
   for free/level 0-1 accounts. Multi-product imports reuse one client so requests
   remain serialized.
-- Order webhooks are not covered by this step. Step 8 will add fulfillment, and
-  step 9 will add tracking polling.
+- The `cjdropshipping_integration_blueprint.md` examples for auth
+  (`email`/`password`), the payment endpoint
+  (`/shopping/payment/payBalanceV2` with `orderIdList`), and webhook signatures
+  (hex HMAC with a separate secret) are outdated. Use this file and the
+  official docs instead.
+- Run the new migrations before deploying:
+  `20261101000000_cj_wallet_payment.sql` adds `supplier_tokens.open_id` and
+  `mark_supplier_order_created`; `20261101000001_cj_shipment_status_guard.sql`
+  keeps out-of-order tracking pushes from downgrading delivered shipments.

@@ -1,5 +1,4 @@
-import Image from "next/image";
-
+import { SmartImage } from "@/components/ui/smart-image";
 import { formatCents } from "@/lib/utils";
 import type { OrderPreview } from "@/types/order";
 
@@ -17,7 +16,7 @@ export function OrderSummary({
           <li key={`${item.title}-${index}`} className="flex gap-4 p-4">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
               {item.imageUrl ? (
-                <Image
+                <SmartImage
                   src={item.imageUrl}
                   alt=""
                   fill

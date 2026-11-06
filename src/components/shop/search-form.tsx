@@ -1,11 +1,8 @@
-"use client";
-
-import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { startNavigation } from "@/lib/navigation-events";
 
 export function SearchForm({
   defaultValue = "",
@@ -16,22 +13,11 @@ export function SearchForm({
   category?: string;
   placeholder?: string;
 }) {
-  const router = useRouter();
-  const [isPending, beginTransition] = useTransition();
+  const navigate = useNavigate();
   const [value, setValue] = useState(defaultValue);
-  const [syncedDefault, setSyncedDefault] = useState(defaultValue);
   const [debouncing, setDebouncing] = useState(false);
   const lastNavigated = useRef(defaultValue.trim());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  if (defaultValue !== syncedDefault) {
-    setSyncedDefault(defaultValue);
-    setValue(defaultValue);
-  }
-
-  useEffect(() => {
-    lastNavigated.current = defaultValue.trim();
-  }, [defaultValue]);
 
   useEffect(() => {
     return () => {
@@ -57,21 +43,17 @@ export function SearchForm({
     return search ? `/products?${search}` : "/products";
   };
 
-  const navigate = (next: string) => {
+  const go = (next: string) => {
     const trimmed = next.trim();
 
     setDebouncing(false);
 
-    beginTransition(() => {
-      if (trimmed === lastNavigated.current) {
-        router.refresh();
-        return;
-      }
+    if (trimmed === lastNavigated.current) {
+      return;
+    }
 
-      lastNavigated.current = trimmed;
-      startNavigation();
-      router.replace(buildHref(next), { scroll: false });
-    });
+    lastNavigated.current = trimmed;
+    navigate(buildHref(next), { replace: true });
   };
 
   const change = (next: string) => {
@@ -82,7 +64,7 @@ export function SearchForm({
       clearTimeout(timer.current);
     }
 
-    timer.current = setTimeout(() => navigate(next), 350);
+    timer.current = setTimeout(() => go(next), 350);
   };
 
   const clear = () => {
@@ -91,15 +73,13 @@ export function SearchForm({
     }
 
     setValue("");
-    navigate("");
+    go("");
   };
 
-  const searching = debouncing || isPending;
+  const searching = debouncing;
 
   return (
     <form
-      action="/products"
-      method="get"
       onSubmit={(event) => {
         event.preventDefault();
 
@@ -107,11 +87,10 @@ export function SearchForm({
           clearTimeout(timer.current);
         }
 
-        navigate(value);
+        go(value);
       }}
       className="flex w-full gap-2"
     >
-      {category ? <input type="hidden" name="category" value={category} /> : null}
       <div className="relative flex-1">
         <Input
           type="search"
@@ -150,8 +129,8 @@ export function SearchForm({
         aria-busy={searching}
         className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
       >
-        {isPending ? <Spinner /> : null}
-        {isPending ? "Searching…" : "Search"}
+        {searching ? <Spinner /> : null}
+        {searching ? "Searching…" : "Search"}
       </button>
       <span role="status" aria-live="polite" className="sr-only">
         {searching ? "Searching products…" : ""}

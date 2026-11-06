@@ -1,7 +1,13 @@
 import { z } from "npm:zod@4";
 
 import { createCjClient } from "../cj/factory.ts";
-import { createOrder } from "../cj/orders.ts";
+import {
+  createOrder,
+  getBalance,
+  getOrder,
+  payBalance,
+  payBalanceV2,
+} from "../cj/orders.ts";
 import {
   CjApiError,
   CjConfigError,
@@ -10,6 +16,7 @@ import {
   CjValidationError,
 } from "../cj/errors.ts";
 import type { CjCreateOrderInput } from "../cj/orders.ts";
+import type { CjBalance, CjOrder } from "../cj/types.ts";
 import { centsToAmount, toCents } from "../money.ts";
 import type { createAdminClient } from "../supabase.ts";
 
@@ -20,6 +27,8 @@ export type SupplierOrderRow = {
   order_id: string;
   status: string;
   supplier_order_id: string | null;
+  request: unknown;
+  response: unknown;
   attempts: number;
 };
 
@@ -269,7 +278,7 @@ function buildCjPayload(
     remark: truncate(order.customer_note, 500) || undefined,
     logisticName: settings.defaultShippingMethod,
     fromCountryCode: settings.fromCountryCode,
-    payType: 2,
+    payType: 3,
     isSandbox: settings.sandbox ? 1 : 0,
     products,
   };
@@ -431,29 +440,104 @@ async function handleFailure(
   return { status: "failed", error: message };
 }
 
+type CjOrderAmounts = {
+  orderId?: string | null;
+  orderNumber?: string | null;
+  shipmentOrderId?: string | null;
+  actualPayment?: unknown;
+  orderAmount?: unknown;
+  productAmount?: unknown;
+  postageAmount?: unknown;
+};
+
+function positiveCents(value: unknown): number | null {
+  const cents = toCents(value);
+
+  return cents !== null && cents > 0 ? cents : null;
+}
+
+function orderCostCents(data: unknown): number | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const value = data as CjOrderAmounts;
+  const cost =
+    positiveCents(value.actualPayment) ??
+    positiveCents(value.orderAmount) ??
+    (positiveCents(value.productAmount) ?? 0) +
+      (positiveCents(value.postageAmount) ?? 0);
+
+  return cost > 0 ? cost : null;
+}
+
+function shipmentOrderIdFrom(data: unknown): string | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  return (data as CjOrderAmounts).shipmentOrderId?.trim() || null;
+}
+
+function isPaidCjStatus(
+  status: string | null | undefined,
+  paymentDate?: string | null,
+): boolean {
+  if (paymentDate?.trim()) {
+    return true;
+  }
+
+  return ["PENDING", "PROCESSING", "UNSHIPPED", "SHIPPED", "DELIVERED"].includes(
+    (status ?? "").trim().toUpperCase(),
+  );
+}
+
+function isPaidCjOrder(order: CjOrder): boolean {
+  return isPaidCjStatus(order.orderStatus, order.paymentDate);
+}
+
+function availableBalanceCents(balance: CjBalance): number | null {
+  const amount = toCents(balance.amount);
+
+  if (amount === null) {
+    return null;
+  }
+
+  return amount - (toCents(balance.freezeAmount) ?? 0);
+}
+
+async function markCreated(
+  admin: AdminClient,
+  row: SupplierOrderRow,
+  cjOrderId: string,
+  payload: CjCreateOrderInput,
+  response: unknown,
+): Promise<void> {
+  const { error } = await admin.rpc("mark_supplier_order_created", {
+    p_supplier_order_id: row.id,
+    p_cj_order_id: cjOrderId,
+    p_request: payload,
+    p_response: response,
+  });
+
+  if (error) {
+    throw new Error(`Could not store the draft CJ order: ${error.message}`);
+  }
+}
+
 async function markSubmitted(
   admin: AdminClient,
   row: SupplierOrderRow,
   order: OrderRow,
-  payload: CjCreateOrderInput,
+  payload: unknown,
   response: unknown,
   settings: FulfillmentSettings,
 ): Promise<FulfillmentOutcome> {
-  const data = response as {
-    orderId?: string | null;
-    orderNumber?: string | null;
-    actualPayment?: unknown;
-    orderAmount?: unknown;
-    productAmount?: unknown;
-    postageAmount?: unknown;
-  };
-
+  const data = response as CjOrderAmounts;
   const supplierOrderId =
     data.orderId ?? data.orderNumber ?? order.order_number;
   const costCents =
-    toCents(data.actualPayment) ??
-    toCents(data.orderAmount) ??
-    (toCents(data.productAmount) ?? 0) + (toCents(data.postageAmount) ?? 0);
+    orderCostCents(response) ?? orderCostCents(row.response) ?? 0;
 
   const { error } = await admin.rpc("mark_supplier_order_submitted", {
     p_supplier_order_id: row.id,
@@ -523,25 +607,6 @@ export async function processSupplierOrder(
       );
     }
 
-    // A previous attempt may have created the CJ order but failed before the
-    // database transition completed. Never create a second CJ order.
-    if (row.supplier_order_id) {
-      const { error } = await admin.rpc("mark_supplier_order_submitted", {
-        p_supplier_order_id: row.id,
-        p_cj_order_id: row.supplier_order_id,
-        p_shipping_method: settings.defaultShippingMethod,
-        p_supplier_cost: null,
-        p_request: null,
-        p_response: null,
-      });
-
-      if (error) {
-        throw new Error(`Could not finalize the CJ order: ${error.message}`);
-      }
-
-      return { status: "submitted", supplierOrderId: row.supplier_order_id };
-    }
-
     const items = await loadItems(admin, row.order_id);
 
     if (items.length === 0) {
@@ -556,15 +621,125 @@ export async function processSupplierOrder(
       .map((item) => item.variant_id)
       .filter((value): value is string => Boolean(value));
     const suppliers = await loadSupplierVariants(admin, variantIds);
-    const payload = buildCjPayload(order, items, suppliers, settings);
     const client = createCjClient();
-    const response = await createOrder(client, payload);
+
+    let payload: CjCreateOrderInput | null = null;
+    let response: unknown = row.response;
+    let cjOrderId = row.supplier_order_id?.trim() || null;
+    let costCents = orderCostCents(response);
+    let shipmentOrderId = shipmentOrderIdFrom(response);
+
+    if (!cjOrderId) {
+      // Create only (payType=3). Persist the CJ id before paying so a retry can
+      // never create a second order for the same customer order.
+      payload = buildCjPayload(order, items, suppliers, settings);
+      const created = await createOrder(client, payload);
+      cjOrderId =
+        created.orderId?.trim() ||
+        created.orderNumber?.trim() ||
+        order.order_number;
+      response = created;
+      costCents = orderCostCents(created);
+      shipmentOrderId = created.shipmentOrderId?.trim() || null;
+
+      await markCreated(admin, row, cjOrderId, payload, created);
+
+      if (isPaidCjStatus(created.orderStatus)) {
+        return await markSubmitted(
+          admin,
+          row,
+          order,
+          payload,
+          created,
+          settings,
+        );
+      }
+    } else {
+      // The draft already exists. Re-read it so a previous attempt that paid
+      // but crashed before the DB update is treated as paid, not paid twice.
+      const current = await getOrder(client, { orderId: cjOrderId });
+      response = current;
+      costCents = orderCostCents(current) ?? costCents;
+      shipmentOrderId = current.shipmentOrderId?.trim() || shipmentOrderId;
+
+      if (current.orderStatus.trim().toUpperCase() === "CANCELLED") {
+        throw new FulfillmentError(
+          `CJ order ${cjOrderId} is cancelled`,
+          "cj_order_cancelled",
+          true,
+        );
+      }
+
+      if (isPaidCjOrder(current)) {
+        return await markSubmitted(
+          admin,
+          row,
+          order,
+          row.request,
+          current,
+          settings,
+        );
+      }
+    }
+
+    if (settings.sandbox) {
+      // Sandbox orders may be auto-paid by createOrderV2 regardless of payType.
+      const current = await getOrder(client, { orderId: cjOrderId });
+
+      if (isPaidCjOrder(current)) {
+        return await markSubmitted(
+          admin,
+          row,
+          order,
+          payload ?? row.request,
+          current,
+          settings,
+        );
+      }
+    }
+
+    if (!settings.sandbox && costCents !== null) {
+      const balance = await getBalance(client);
+      const available = availableBalanceCents(balance);
+
+      if (available !== null && available < costCents) {
+        throw new FulfillmentError(
+          `CJ balance is insufficient: available ${centsToAmount(available).toFixed(2)} USD, needed ${centsToAmount(costCents).toFixed(2)} USD. Top up the CJ account, then retry this order.`,
+          "cj_insufficient_balance",
+          true,
+        );
+      }
+    }
+
+    try {
+      if (shipmentOrderId) {
+        await payBalanceV2(client, { shipmentOrderId });
+      } else {
+        await payBalance(client, { orderId: cjOrderId });
+      }
+    } catch (error) {
+      // A retry (or sandbox auto-payment) may have paid the draft already.
+      let current: CjOrder | null = null;
+
+      try {
+        current = await getOrder(client, { orderId: cjOrderId });
+      } catch {
+        current = null;
+      }
+
+      if (!current || !isPaidCjOrder(current)) {
+        throw error;
+      }
+
+      response = current;
+      costCents = orderCostCents(current) ?? costCents;
+    }
 
     return await markSubmitted(
       admin,
       row,
       order,
-      payload,
+      payload ?? row.request,
       response,
       settings,
     );

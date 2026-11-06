@@ -14,6 +14,7 @@ import { getCjProduct, importCatalog, searchCatalog } from "./catalog.ts";
 import {
   getAdminOrder,
   listAdminOrders,
+  markOrderPaidManually,
   retrySupplierOrder,
 } from "./orders.ts";
 import {
@@ -93,6 +94,28 @@ Deno.serve(async (request) => {
     if (request.method === "GET" && action === "orders.get") {
       return json(
         await getAdminOrder(admin, url.searchParams.get("id") ?? ""),
+      );
+    }
+
+    if (request.method === "POST" && action === "orders.markPaid") {
+      const payload = await readJson(request);
+      const body =
+        payload && typeof payload === "object" && !Array.isArray(payload)
+          ? (payload as { orderId?: unknown; reference?: unknown })
+          : {};
+      const orderId =
+        typeof body.orderId === "string" ? body.orderId.trim() : "";
+      const reference =
+        typeof body.reference === "string" && body.reference.trim()
+          ? body.reference.trim().slice(0, 120)
+          : null;
+
+      if (!orderId) {
+        throw new HttpError(400, "orderId is required");
+      }
+
+      return json(
+        await markOrderPaidManually(admin, orderId, user, reference),
       );
     }
 

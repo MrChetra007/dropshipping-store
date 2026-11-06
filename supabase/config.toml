@@ -425,3 +425,8 @@ verify_jwt = false
 
 [functions.stock-sync]
 verify_jwt = false
+
+# CJ signs webhook pushes with the account openId, so the function verifies the
+# signature itself instead of requiring a Supabase JWT.
+[functions.cj-webhook]
+verify_jwt = false

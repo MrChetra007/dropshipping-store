@@ -1,9 +1,7 @@
-const FALLBACK_SITE_URL = "http://localhost:3000";
+import { env } from "@/lib/env";
 
 export function siteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-
-  return (configured || FALLBACK_SITE_URL).replace(/\/+$/, "");
+  return env.VITE_SITE_URL.replace(/\/+$/, "");
 }
 
 export function absoluteUrl(path: string): string {

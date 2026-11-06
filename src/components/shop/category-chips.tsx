@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 import type { CategorySummary } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
@@ -41,13 +41,13 @@ export function CategoryChips({
 
   return (
     <nav aria-label="Product categories" className="flex flex-wrap gap-2">
-      <Link href={hrefFor()} className={chipClass(!activeSlug)}>
+      <Link to={hrefFor()} className={chipClass(!activeSlug)}>
         All
       </Link>
       {categories.map((category) => (
         <Link
           key={category.id}
-          href={hrefFor(category.slug)}
+          to={hrefFor(category.slug)}
           className={chipClass(activeSlug === category.slug)}
         >
           {category.name}

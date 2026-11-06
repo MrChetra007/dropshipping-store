@@ -26,6 +26,7 @@ drop view     if exists public.v_order_profit cascade;
 drop function if exists public.mark_order_paid(uuid, text, text, numeric, text, jsonb) cascade;
 drop function if exists public.claim_supplier_orders(integer) cascade;
 drop function if exists public.claim_supplier_order(uuid) cascade;
+drop function if exists public.mark_supplier_order_created(uuid, text, jsonb, jsonb) cascade;
 drop function if exists public.mark_supplier_order_submitted(uuid, text, text, numeric, jsonb, jsonb) cascade;
 drop function if exists public.apply_supplier_order_update cascade;
 drop function if exists public.handle_new_user() cascade;
@@ -429,6 +430,7 @@ create table public.refunds (
 -- CJ access/refresh tokens (service-role only)
 create table public.supplier_tokens (
   supplier            text primary key,
+  open_id             text,
   access_token        text,
   refresh_token       text,
   access_expires_at   timestamptz,
@@ -632,6 +634,30 @@ begin
   );
 end $$;
 
+-- Persist the CJ order id as soon as the draft order is created (payType=3),
+-- before payment. A retry can then pay the existing order instead of creating
+-- a duplicate.
+create or replace function public.mark_supplier_order_created(
+  p_supplier_order_id uuid,
+  p_cj_order_id        text,
+  p_request            jsonb,
+  p_response           jsonb
+) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.supplier_orders
+     set supplier_order_id = p_cj_order_id,
+         request = coalesce(p_request, request),
+         response = coalesce(p_response, response),
+         error = null,
+         updated_at = now()
+   where id = p_supplier_order_id;
+
+  if not found then
+    raise exception 'supplier order % not found', p_supplier_order_id;
+  end if;
+end $$;
+
 -- Apply one CJ tracking poll result atomically:
 --   * upsert the shipment row (unique per order + tracking number)
 --   * move the supplier order / customer order forward without downgrading
@@ -668,7 +694,12 @@ begin
       set supplier_order_id = coalesce(excluded.supplier_order_id, public.shipments.supplier_order_id),
           carrier           = coalesce(excluded.carrier, public.shipments.carrier),
           tracking_url      = coalesce(excluded.tracking_url, public.shipments.tracking_url),
-          status            = excluded.status,
+          status            = case
+                                when public.shipments.status = 'delivered' then 'delivered'
+                                when excluded.status = 'delivered' then 'delivered'
+                                when public.shipments.status = 'exception' then 'exception'
+                                else excluded.status
+                              end,
           delivered_at      = case
                                 when excluded.status = 'delivered'
                                   then coalesce(public.shipments.delivered_at, now())
@@ -712,11 +743,13 @@ end $$;
 revoke all on function public.mark_order_paid(uuid, text, text, numeric, text, jsonb) from public, anon, authenticated;
 revoke all on function public.claim_supplier_orders(integer) from public, anon, authenticated;
 revoke all on function public.claim_supplier_order(uuid) from public, anon, authenticated;
+revoke all on function public.mark_supplier_order_created(uuid, text, jsonb, jsonb) from public, anon, authenticated;
 revoke all on function public.mark_supplier_order_submitted(uuid, text, text, numeric, jsonb, jsonb) from public, anon, authenticated;
 revoke all on function public.apply_supplier_order_update(uuid, uuid, text, text, text, text, public.supplier_order_status, public.order_status, public.fulfillment_status, text, text) from public, anon, authenticated;
 grant execute on function public.mark_order_paid(uuid, text, text, numeric, text, jsonb) to service_role;
 grant execute on function public.claim_supplier_orders(integer) to service_role;
 grant execute on function public.claim_supplier_order(uuid) to service_role;
+grant execute on function public.mark_supplier_order_created(uuid, text, jsonb, jsonb) to service_role;
 grant execute on function public.mark_supplier_order_submitted(uuid, text, text, numeric, jsonb, jsonb) to service_role;
 grant execute on function public.apply_supplier_order_update(uuid, uuid, text, text, text, text, public.supplier_order_status, public.order_status, public.fulfillment_status, text, text) to service_role;
 
@@ -821,7 +854,8 @@ insert into public.settings (key, value) values
   ('public.store',        '{"name": "My Store", "currency": "USD", "support_email": "support@example.com"}'),
   ('pricing.markup',      '{"multiplier": 2.5, "round_to": 0.99}'),
   ('pricing.margin_guard', '{"min_margin_percent": 20, "auto_reprice": false}'),
-  ('fulfillment.cj',      '{"auto_place_orders": true, "default_shipping_method": "CJPacket", "max_attempts": 5}')
+  ('fulfillment.cj',      '{"auto_place_orders": true, "default_shipping_method": "CJPacket", "max_attempts": 5}'),
+  ('public.payment_instructions', '{"bank_name": "", "account_name": "", "account_number": "", "swift": "", "instructions": ""}')
 on conflict (key) do nothing;
 
 insert into public.shipping_rates (name, country_code, amount, free_over, min_days, max_days) values

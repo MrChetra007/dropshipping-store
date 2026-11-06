@@ -1,6 +1,4 @@
-import "server-only";
-
-import { callEdgeFunction, EdgeFunctionError } from "@/lib/supabase/functions";
+import { callEdgeFunction, EdgeFunctionError } from "@/lib/functions";
 import type { OrderPreview } from "@/types/order";
 
 export async function getOrderPreview(

@@ -15,7 +15,9 @@ the app automatically places the order at CJ, then tracks shipment and shows tra
 The owner is based in **Cambodia**. This drives the payment decision (see section 3).
 
 **Money flow:** customer pays → payment provider → owner. Separately, the owner pays CJ from the
-CJ account balance. The app must never place a CJ order before payment is confirmed by a verified webhook.
+CJ account balance. The app must never place a CJ order before payment is confirmed by a verified
+webhook or, for manual bank transfers, by an explicit admin confirmation that calls the same
+`mark_order_paid` RPC.
 
 ## 1. Tech stack (fixed)
 
@@ -52,7 +54,16 @@ Stripe does not onboard businesses located in Cambodia directly, and PayPal in C
 - A US company (e.g. via Stripe Atlas) with Stripe + a US business bank account, with payouts onward to the owner (e.g. Payoneer)
 - Another payment provider that accepts Cambodian merchants selling physical goods
 
-**DECISION (owner): which provider.** Until decided, build against the interface below and use the `mock` provider.
+**DECISION (owner): which provider.** The current choice is **manual bank
+transfer**: `PAYMENT_PROVIDER=manual` sends the customer to
+`/checkout/manual`, and an admin confirms the transfer from the admin order
+page. Confirmation runs the same idempotent `mark_order_paid` RPC as a webhook,
+so it still queues the CJ order and sends the confirmation email. Use
+`PAYMENT_PROVIDER=mock` only for local development of the webhook path.
+
+Note: CJ is the supplier, not a customer payment gateway. The CJ wallet
+(`payType=3` + `payBalance`/`payBalanceV2`) only pays CJ for fulfillment. A
+separate provider is always required to collect money from customers.
 
 ### Payment abstraction (build this in step 6)
 
@@ -84,10 +95,14 @@ export interface PaymentProvider {
   verifyWebhook(rawBody: string, headers: Headers): Promise<VerifiedPaymentEvent>; // throws if signature invalid
 }
 ```
-
-`src/lib/payments/index.ts` exports `getPaymentProvider()` which reads `PAYMENT_PROVIDER` env (`mock` | provider name).
-The `mock` provider redirects to `/checkout/mock?order=...` where a dev-only button simulates a paid webhook (only enabled when `NODE_ENV !== "production"`).
-
+`supabase/functions/_shared/payments/index.ts` exports `getPaymentProvider()` which reads
+`PAYMENT_PROVIDER` (`manual` | `mock`; default `manual`).
+The `manual` provider redirects to `/checkout/manual?order=...&token=...`, which reads the bank
+details from `public.payment_instructions`. An admin confirms the transfer on
+`/admin/orders/[id]` with **Mark as paid**; the `admin-api` `orders.markPaid` action calls
+`mark_order_paid` with provider `manual`.
+The `mock` provider redirects to `/checkout/mock?order=...` where a dev-only button simulates a
+paid webhook (only enabled when `PAYMENT_PROVIDER=mock`).
 ## 4. Project structure
 
 ```
@@ -160,7 +175,8 @@ my-store/
 │  │  ├─ payments/                         # see section 3
 │  │  │  ├─ types.ts
 │  │  │  ├─ index.ts
-│  │  │  └─ providers/mock.ts
+│  │  │  ├─ manual.ts
+│  │  │  └─ mock.ts
 │  │  ├─ pricing.ts                        # markup rules, rounding, totals (cents)
 │  │  ├─ orders.ts                         # createOrderFromCart, computeTotals, cancel
 │  │  ├─ fulfillment.ts                    # processSupplierOrder(), retry/backoff
@@ -184,7 +200,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 # CJ_API_KEY is a Supabase Edge Function secret, not a Next.js env var.
 # See section 11.
 
-PAYMENT_PROVIDER=mock
+PAYMENT_PROVIDER=manual
 PAYMENT_WEBHOOK_SECRET=
 PAYMENT_API_KEY=
 
@@ -232,17 +248,22 @@ CRON_SECRET=                # long random string; cron routes require "Authoriza
 - Cart via `carts`/`cart_items` (cookie `cart_id`, httpOnly). API: add, update quantity, remove. Validate variant is active and stock isn't 0.
 - `/api/checkout` (POST): validate with zod → load variants → check price/stock → pick shipping rate by country → validate discount code → compute totals in cents → insert `orders` (status `pending_payment`) + `order_items` + `order_item_costs` (from `supplier_variants.cost_price`) → `getPaymentProvider().createCheckout(...)` → save `payment_provider`, `provider_checkout_id` → return redirect URL.
 - Margin guard: if estimated cost (+ shipping cost estimate) ≥ selling price for any item, add an `order_events` row (internal) and still allow the order but flag it in admin.
-- Build payment abstraction + `mock` provider (section 3).
-- **Done when:** with the mock provider a full checkout creates a pending order with correct totals, and tampering with prices in the request has no effect.
-
+- Build payment abstraction + `manual` provider (section 3); `mock` stays for dev.
+- **Done when:** a full checkout creates a pending order with correct totals, redirects to
+  `/checkout/manual`, and tampering with prices in the request has no effect. Marking it paid in
+  admin queues the CJ order.
 ### Step 7 — Payment webhook
 - `/api/webhooks/payment` (POST): read raw body → `provider.verifyWebhook` → insert into `webhook_events` (unique conflict ⇒ return 200 "duplicate") → if `paid`: call RPC `mark_order_paid(...)` → mark webhook event `processed` (or `failed` with error) → return 200 quickly.
 - RPC returns `paid | duplicate | mismatch | ignored`; handle `mismatch`/`ignored` by leaving the order for manual review (admin sees the internal event).
 - On `paid`, send confirmation email and trigger fulfillment (call the same function the cron uses, don't block the webhook response on failure).
-- **Done when:** replaying the same webhook twice produces exactly one payment row, one supplier_orders row, and one email.
+- Manual payments use `admin-api` `orders.markPaid` instead of a webhook; it calls the same
+  `mark_order_paid` RPC, so the payment row, supplier order, email, and fulfillment kick are
+  identical.
+- **Done when:** replaying the same webhook (or clicking **Mark as paid** twice) produces exactly
+  one payment row, one supplier_orders row, and one email.
 
 ### Step 8 — Fulfillment to CJ
-- `lib/fulfillment.ts` → `processSupplierOrder(row)`: load order + items + `supplier_variants`, map to CJ order payload per docs (customer address, CJ variant ids, quantities, shipping method from `settings.fulfillment.cj`), call CJ createOrder, store `request`/`response`, set `supplier_order_id`, `supplier_cost_total`, status `submitted`, order `fulfillment_status = 'submitted'`, add public timeline event "Order sent to warehouse".
+- `lib/fulfillment.ts` → `processSupplierOrder(row)`: load order + items + `supplier_variants`, map to CJ order payload per docs (customer address, CJ variant ids, quantities, shipping method from `settings.fulfillment.cj`), create the draft with `payType=3`, persist the CJ id, then pay from the CJ wallet with `payBalanceV2`/`payBalance`. Store `request`/`response`, set `supplier_cost_total`, status `submitted`, order `fulfillment_status = 'submitted'`, add public timeline event "Order sent to warehouse".
 - On error: store `error`, set `status = 'queued'` with exponential `next_attempt_at` until `max_attempts`, then `status = 'failed'`, order `fulfillment_status = 'failed'`, internal event (admin dashboard shows a red alert).
 - `/api/cron/fulfill`: requires `Authorization: Bearer CRON_SECRET`; calls RPC `claim_supplier_orders(5)` and processes each.
 - Check CJ account balance errors explicitly (insufficient balance must produce a clear admin alert, not a silent retry loop).
@@ -251,6 +272,7 @@ CRON_SECRET=                # long random string; cron routes require "Authoriza
 
 ### Step 9 — Tracking + emails
 - `/api/cron/tracking`: for `supplier_orders` in `submitted/confirmed/shipped`, query CJ for status/tracking; upsert `shipments`; update `orders.status/fulfillment_status`; add public events; send "Your order has shipped" email with tracking link (once per tracking number).
+- `supabase/functions/cj-webhook`: CJ order/logistics pushes; verify `sign` with the stored openId, dedupe `messageId`, apply the same shipment/status update as the cron.
 - Emails (Resend): order confirmation, shipped, refund processed. Plain, clean HTML templates in `src/lib/email.ts`.
 - Order page `/orders/[orderNumber]` shows timeline (public events), items, shipping address, tracking link.
 - **Done when:** a tracking number appearing in CJ shows up on the customer order page and triggers exactly one email.

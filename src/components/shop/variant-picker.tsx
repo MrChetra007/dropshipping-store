@@ -1,11 +1,11 @@
-"use client";
-
-import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { useCartFeedback } from "@/components/shop/cart-feedback";
 import { PriceTag } from "@/components/shop/price-tag";
 import { Spinner } from "@/components/ui/spinner";
+import { addToCart } from "@/features/cart/cart-api";
 import { cn } from "@/lib/utils";
 
 export type PickerVariant = {
@@ -30,6 +30,7 @@ export function VariantPicker({
   variants: PickerVariant[];
   productTitle?: string;
 }) {
+  const queryClient = useQueryClient();
   const initial = variants.find(isAvailable) ?? variants[0];
   const [selectedId, setSelectedId] = useState(initial?.id ?? "");
   const [quantity, setQuantity] = useState(1);
@@ -89,7 +90,7 @@ export function VariantPicker({
     setQuantity(1);
   };
 
-  const addToCart = async () => {
+  const add = async () => {
     if (!available || status === "adding") {
       return;
     }
@@ -98,21 +99,8 @@ export function VariantPicker({
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "add",
-          variantId: selected.id,
-          quantity,
-        }),
-      });
-      const data = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not add this item to your cart");
-      }
-
+      const updated = await addToCart(selected.id, quantity);
+      queryClient.setQueryData(["cart"], updated);
       setStatus("added");
       notifyAdded({ title: productTitle ?? selected.title, quantity });
     } catch (error) {
@@ -271,7 +259,7 @@ export function VariantPicker({
           </div>
           <button
             type="button"
-            onClick={addToCart}
+            onClick={add}
             disabled={!available || status === "adding"}
             aria-busy={status === "adding"}
             className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
@@ -299,7 +287,7 @@ export function VariantPicker({
             className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
           >
             Added to cart.{" "}
-            <Link href="/cart" className="font-medium underline underline-offset-2">
+            <Link to="/cart" className="font-medium underline underline-offset-2">
               View cart
             </Link>
           </p>

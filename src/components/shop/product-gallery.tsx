@@ -1,8 +1,6 @@
-"use client";
-
-import Image from "next/image";
 import { useState } from "react";
 
+import { SmartImage } from "@/components/ui/smart-image";
 import { cn } from "@/lib/utils";
 
 export type GalleryImage = {
@@ -30,10 +28,9 @@ export function ProductGallery({
   return (
     <div className="space-y-3">
       <div className="relative aspect-square overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
-        <Image
+        <SmartImage
           src={active.url}
           alt={active.alt ?? title}
-          fill
           priority
           sizes="(min-width: 1024px) 50vw, 100vw"
           className="object-cover"
@@ -56,13 +53,7 @@ export function ProductGallery({
                   : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-700",
               )}
             >
-              <Image
-                src={image.url}
-                alt=""
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
+              <SmartImage src={image.url} alt="" sizes="64px" className="object-cover" />
             </button>
           ))}
         </div>

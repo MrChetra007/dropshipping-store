@@ -1,7 +1,3 @@
 {
-  "crons": [
-    { "path": "/api/cron/fulfill", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/tracking", "schedule": "0 */3 * * *" },
-    { "path": "/api/cron/stock", "schedule": "0 */6 * * *" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

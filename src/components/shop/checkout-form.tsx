@@ -1,10 +1,10 @@
-"use client";
-
-import Image from "next/image";
+﻿
 import { useMemo, useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
+import { SmartImage } from "@/components/ui/smart-image";
 import { Spinner } from "@/components/ui/spinner";
+import { startCheckout } from "@/features/checkout/checkout-api";
 import { formatCents } from "@/lib/utils";
 import type { Cart } from "@/types/cart";
 
@@ -142,36 +142,24 @@ export function CheckoutForm({
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          shipping: {
-            name: name.trim(),
-            phone: phone.trim() || null,
-            line1: line1.trim(),
-            line2: line2.trim() || null,
-            city: city.trim(),
-            state: state.trim() || null,
-            postalCode: postalCode.trim(),
-            countryCode,
-          },
-          shippingRateName: selectedRate.name,
-          discountCode: discountCode.trim() || null,
-          note: note.trim() || null,
-        }),
+      const result = await startCheckout({
+        email: email.trim(),
+        shipping: {
+          name: name.trim(),
+          phone: phone.trim() || null,
+          line1: line1.trim(),
+          line2: line2.trim() || null,
+          city: city.trim(),
+          state: state.trim() || null,
+          postalCode: postalCode.trim(),
+          countryCode,
+        },
+        shippingRateName: selectedRate.name,
+        discountCode: discountCode.trim() || null,
+        note: note.trim() || null,
       });
-      const data = (await response.json()) as {
-        error?: string;
-        redirectUrl?: string;
-      };
 
-      if (!response.ok || !data.redirectUrl) {
-        throw new Error(data.error ?? "Could not start checkout");
-      }
-
-      window.location.assign(data.redirectUrl);
+      window.location.assign(result.redirectUrl);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Could not start checkout",
@@ -324,7 +312,7 @@ export function CheckoutForm({
                       <span className="font-medium">{rate.name}</span>
                       <span className="block text-xs text-zinc-500">
                         {rate.minDays !== null && rate.maxDays !== null
-                          ? `${rate.minDays}–${rate.maxDays} business days`
+                          ? `${rate.minDays}â€“${rate.maxDays} business days`
                           : "Delivery time confirmed after dispatch"}
                       </span>
                     </span>
@@ -395,7 +383,7 @@ export function CheckoutForm({
             <li key={item.id} className="flex gap-3">
               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
                 {item.imageUrl ? (
-                  <Image
+                  <SmartImage
                     src={item.imageUrl}
                     alt=""
                     fill
@@ -408,7 +396,7 @@ export function CheckoutForm({
                 <p className="line-clamp-2">{item.productTitle}</p>
                 <p className="text-xs text-zinc-500">
                   {item.variantTitle !== "Default"
-                    ? `${item.variantTitle} · `
+                    ? `${item.variantTitle} Â· `
                     : ""}
                   Qty {item.quantity}
                 </p>
@@ -434,7 +422,7 @@ export function CheckoutForm({
                 ? shippingCents === 0
                   ? "Free"
                   : formatCents(shippingCents, cart.currency)
-                : "—"}
+                : "â€”"}
             </dd>
           </div>
           <div className="flex items-center justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
@@ -461,7 +449,7 @@ export function CheckoutForm({
           className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           {submitting ? <Spinner /> : null}
-          {submitting ? "Starting checkout…" : "Continue to payment"}
+          {submitting ? "Starting checkoutâ€¦" : "Continue to payment"}
         </button>
 
         <p className="text-xs text-zinc-500">

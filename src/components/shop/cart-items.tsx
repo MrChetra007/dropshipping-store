@@ -1,11 +1,13 @@
-"use client";
-
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Spinner } from "@/components/ui/spinner";
+import { SmartImage } from "@/components/ui/smart-image";
+import {
+  removeCartItem,
+  updateCartItem,
+} from "@/features/cart/cart-api";
 import { formatCents } from "@/lib/utils";
 import type { Cart } from "@/types/cart";
 
@@ -14,34 +16,10 @@ type PendingAction = { variantId: string; action: "update" | "remove" };
 type Feedback = { tone: "success" | "error"; message: string } | null;
 
 export function CartItems({ cart }: { cart: Cart }) {
-  const router = useRouter();
-  const [isRefreshing, beginRefresh] = useTransition();
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState<PendingAction | null>(null);
-  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
-    Object.fromEntries(
-      cart.items.map((item) => [item.variantId, item.quantity]),
-    ),
-  );
-  const [syncedCart, setSyncedCart] = useState(cart);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  if (cart !== syncedCart) {
-    setSyncedCart(cart);
-    setQuantities(
-      Object.fromEntries(
-        cart.items.map((item) => [item.variantId, item.quantity]),
-      ),
-    );
-  }
-
-  useEffect(() => {
-    return () => {
-      if (feedbackTimer.current) {
-        clearTimeout(feedbackTimer.current);
-      }
-    };
-  }, []);
 
   const showFeedback = (next: Feedback) => {
     setFeedback(next);
@@ -55,44 +33,21 @@ export function CartItems({ cart }: { cart: Cart }) {
     }
   };
 
-  const changeQuantity = async (variantId: string, quantity: number) => {
+  const run = async (
+    variantId: string,
+    action: "update" | "remove",
+    operation: () => Promise<Cart>,
+  ) => {
     if (pending) {
       return;
     }
 
-    const item = cart.items.find((entry) => entry.variantId === variantId);
-
-    if (!item) {
-      return;
-    }
-
-    const nextQuantity = Math.max(0, quantity);
-    const previous = quantities[variantId] ?? item.quantity;
-    const action = nextQuantity <= 0 ? "remove" : "update";
-
     setPending({ variantId, action });
     setFeedback(null);
 
-    if (nextQuantity > 0) {
-      setQuantities((current) => ({ ...current, [variantId]: nextQuantity }));
-    }
-
     try {
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          variantId,
-          quantity: nextQuantity,
-        }),
-      });
-      const data = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not update your cart");
-      }
-
+      const updated = await operation();
+      queryClient.setQueryData(["cart"], updated);
       showFeedback({
         tone: "success",
         message:
@@ -100,9 +55,7 @@ export function CartItems({ cart }: { cart: Cart }) {
             ? "Item removed from cart."
             : "Cart updated.",
       });
-      beginRefresh(() => router.refresh());
     } catch (error) {
-      setQuantities((current) => ({ ...current, [variantId]: previous }));
       showFeedback({
         tone: "error",
         message:
@@ -111,6 +64,15 @@ export function CartItems({ cart }: { cart: Cart }) {
     } finally {
       setPending(null);
     }
+  };
+
+  const changeQuantity = (variantId: string, quantity: number) => {
+    if (quantity <= 0) {
+      void run(variantId, "remove", () => removeCartItem(variantId));
+      return;
+    }
+
+    void run(variantId, "update", () => updateCartItem(variantId, quantity));
   };
 
   return (
@@ -129,17 +91,6 @@ export function CartItems({ cart }: { cart: Cart }) {
         </p>
       ) : null}
 
-      {isRefreshing ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className="flex items-center gap-2 text-sm text-zinc-500"
-        >
-          <Spinner className="h-3.5 w-3.5" />
-          Updating totals…
-        </p>
-      ) : null}
-
       <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
         {cart.items.map((item) => {
           const maxQuantity = Math.max(
@@ -147,19 +98,12 @@ export function CartItems({ cart }: { cart: Cart }) {
             item.stock === null ? 99 : Math.min(99, item.stock),
           );
           const rowPending = pending?.variantId === item.variantId;
-          const quantity = quantities[item.variantId] ?? item.quantity;
 
           return (
             <li key={item.id} className="flex gap-4 p-4">
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
                 {item.imageUrl ? (
-                  <Image
-                    src={item.imageUrl}
-                    alt=""
-                    fill
-                    sizes="80px"
-                    className="object-cover"
-                  />
+                  <SmartImage src={item.imageUrl} alt="" sizes="80px" className="object-cover" />
                 ) : null}
                 {rowPending ? (
                   <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-zinc-600 dark:bg-zinc-950/70 dark:text-zinc-300">
@@ -172,7 +116,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <Link
-                      href={`/products/${item.productSlug}`}
+                      to={`/products/${item.productSlug}`}
                       className="line-clamp-2 text-sm font-medium hover:underline"
                     >
                       {item.productTitle}
@@ -203,7 +147,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                   </label>
                   <select
                     id={`quantity-${item.variantId}`}
-                    value={quantity}
+                    value={item.quantity}
                     disabled={rowPending || !item.isActive}
                     aria-busy={rowPending}
                     onChange={(event) =>

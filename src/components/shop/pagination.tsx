@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 
@@ -57,7 +57,7 @@ export function Pagination({
     >
       {page > 1 ? (
         <Link
-          href={hrefFor(page - 1)}
+          to={hrefFor(page - 1)}
           rel="prev"
           className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >
@@ -72,7 +72,7 @@ export function Pagination({
       {pages[0] > 1 ? (
         <>
           <Link
-            href={hrefFor(1)}
+            to={hrefFor(1)}
             className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-zinc-300 px-2 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             1
@@ -84,7 +84,7 @@ export function Pagination({
       {pages.map((item) => (
         <Link
           key={item}
-          href={hrefFor(item)}
+          to={hrefFor(item)}
           aria-current={item === page ? "page" : undefined}
           className={cn(
             "inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-sm transition-colors",
@@ -103,7 +103,7 @@ export function Pagination({
             <span className="px-1 text-zinc-400">…</span>
           ) : null}
           <Link
-            href={hrefFor(pageCount)}
+            to={hrefFor(pageCount)}
             className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-zinc-300 px-2 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             {pageCount}
@@ -113,7 +113,7 @@ export function Pagination({
 
       {page < pageCount ? (
         <Link
-          href={hrefFor(page + 1)}
+          to={hrefFor(page + 1)}
           rel="next"
           className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >

@@ -11,9 +11,38 @@ export {
 } from "./errors.ts";
 export { createCjClient } from "./factory.ts";
 export { variantCost, variantStock } from "./inventory.ts";
-export { getBalance, createOrder, getOrder } from "./orders.ts";
-export type { CjCreateOrderInput, CjGetOrderInput } from "./orders.ts";
+export {
+  createOrder,
+  getBalance,
+  getOrder,
+  payBalance,
+  payBalanceV2,
+} from "./orders.ts";
+export type {
+  CjCreateOrderInput,
+  CjGetOrderInput,
+  CjPayBalanceInput,
+  CjPayBalanceV2Input,
+} from "./orders.ts";
 export { getProduct, searchProducts } from "./products.ts";
+export {
+  canAdvance,
+  FULFILLMENT_RANK,
+  mapCjOrderStatus,
+  mapLogisticsStatus,
+  mapShipmentStatus,
+  mapTrackingStatusNumber,
+  ORDER_RANK,
+  SUPPLIER_RANK,
+} from "./status.ts";
+export type {
+  FulfillmentStatus,
+  MappedStatus,
+  OrderStatus,
+  SupplierOrderStatus,
+} from "./status.ts";
+export { setWebhook } from "./webhook-api.ts";
+export type { CjWebhookSetInput } from "./webhook-api.ts";
 export type {
   CjProductFeature,
   CjProductLookup,

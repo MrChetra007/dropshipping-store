@@ -101,6 +101,7 @@ service-role client, then performs the action.
 | `products.update` | POST | Edit title, description, category, status, prices, image order |
 | `orders.list` | GET | Admin order list |
 | `orders.get` | GET | Admin order detail incl. CJ/supplier state |
+| `orders.markPaid` | POST | Confirm a manual bank transfer through `mark_order_paid`, then kick CJ |
 | `orders.retryFulfillment` | POST | Reset a failed supplier order and re-kick the worker |
 | `settings` | GET | Read settings |
 | `setting` | POST | Update one setting |
@@ -326,6 +327,8 @@ Default: multiplier `2.5`, round_to `0.99`.
    - stores `payment_provider` and `provider_checkout_id`
    - clears the cart items
    - returns the provider redirect URL to Next.js
+   - with `PAYMENT_PROVIDER=manual`, the redirect is `/checkout/manual`, which
+     shows the bank details to the customer; an admin confirms the transfer later
 
 If the provider cannot start a checkout, the edge function deletes the pending
 order so no orphan `pending_payment` row remains. The cart is cleared only after
@@ -334,7 +337,11 @@ the checkout is attached, so a failed retry keeps the cart.
 ### 7.5 Payment webhook
 
 `POST /api/webhooks/payment` forwards the raw body plus signature headers to
-`store-api` `payment.webhook`.
+`store-api` `payment.webhook`. This path applies to callback-based providers
+(`mock` today). With `PAYMENT_PROVIDER=manual`, checkout redirects to
+`/checkout/manual`, and an admin confirms the bank transfer with the
+`admin-api` `orders.markPaid` action. That action calls the same
+`mark_order_paid` RPC, sends the confirmation email, and kicks `fulfill-order`.
 
 `processPaymentWebhook`:
 
@@ -475,6 +482,7 @@ states are mapped.
 | `pricing.markup` | `{ multiplier, round_to }` | Import and reprice rule |
 | `pricing.margin_guard` | `{ min_margin_percent, auto_reprice }` | Stock sync margin policy |
 | `fulfillment.cj` | `{ auto_place_orders, default_shipping_method, max_attempts, from_country_code, sandbox }` | CJ order submission |
+| `public.payment_instructions` | `{ bank_name, account_name, account_number, swift, instructions }` | Bank details shown on `/checkout/manual` after checkout |
 
 `fulfillment.cj.default_shipping_method` must be a valid CJ `logisticName` for
 the account. The seed value `CJPacket` is only a placeholder.
@@ -488,7 +496,7 @@ Supabase function secrets:
 ```text
 CJ_API_KEY
 CRON_SECRET
-PAYMENT_PROVIDER=mock
+PAYMENT_PROVIDER=manual   # use "mock" only for local webhook testing
 PAYMENT_WEBHOOK_SECRET
 RESEND_API_KEY
 EMAIL_FROM
@@ -596,8 +604,11 @@ update public.profiles set role = 'admin' where email = 'you@example.com';
 
 ## 13. Known limitations
 
-- Only the `mock` payment provider is implemented. A real provider must support
-  physical goods and Cambodian merchants.
+- Customer payments use the `manual` bank-transfer provider. A real card/wallet
+  provider still needs to be chosen; it must support physical goods and
+  Cambodian merchants. `mock` remains dev-only.
+- Manual payments are confirmed by an admin on `/admin/orders/[id]`; the
+  customer sees the bank details from `public.payment_instructions`.
 - Shipping rates are configured manually in `shipping_rates`; CJ
   `freightCalculate` is not used.
 - CJ order status is polled; CJ order webhooks are not consumed.

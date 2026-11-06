@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -12,6 +9,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Link, useLocation } from "react-router-dom";
+
+import { getCart } from "@/features/cart/cart-api";
 
 type AddedItem = {
   title: string;
@@ -39,61 +39,27 @@ export function useCartFeedback() {
 }
 
 export function CartFeedback({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const [itemCount, setItemCount] = useState(0);
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const { data: cart } = useQuery({
+    queryKey: ["cart"],
+    queryFn: getCart,
+  });
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const itemCount = cart?.itemCount ?? 0;
 
+  const pathname = location.pathname;
   const hidden =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/account") ||
     pathname.startsWith("/orders") ||
     pathname.startsWith("/checkout") ||
+    pathname.startsWith("/auth") ||
     pathname === "/cart" ||
     pathname === "/login" ||
     pathname === "/signup";
 
-  const refresh = useCallback(async () => {
-    try {
-      const response = await fetch("/api/cart", { cache: "no-store" });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data = (await response.json()) as {
-        cart?: { itemCount?: number } | null;
-      };
-
-      setItemCount(data.cart?.itemCount ?? 0);
-    } catch {
-      // Keep the last known count if the cart cannot be reached.
-    }
-  }, []);
-
-  useEffect(() => {
-    if (hidden) {
-      return;
-    }
-
-    let cancelled = false;
-
-    fetch("/api/cart", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { cart?: { itemCount?: number } | null } | null) => {
-        if (!cancelled) {
-          setItemCount(data?.cart?.itemCount ?? 0);
-        }
-      })
-      .catch(() => {
-        // Keep the last known count if the cart cannot be reached.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hidden]);
-
   useEffect(() => {
     return () => {
       if (toastTimer.current) {
@@ -102,20 +68,19 @@ export function CartFeedback({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const notifyAdded = useCallback(
-    (item: AddedItem) => {
-      setItemCount((current) => current + item.quantity);
-      setToast(item);
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["cart"] });
+  }, [queryClient]);
 
-      if (toastTimer.current) {
-        clearTimeout(toastTimer.current);
-      }
+  const notifyAdded = useCallback((item: AddedItem) => {
+    setToast(item);
 
-      toastTimer.current = setTimeout(() => setToast(null), 5000);
-      void refresh();
-    },
-    [refresh],
-  );
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
+
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+  }, []);
 
   const value = useMemo(
     () => ({ itemCount, notifyAdded, refresh }),
@@ -148,7 +113,7 @@ export function CartFeedback({ children }: { children: ReactNode }) {
                   {toast.quantity} × {toast.title}
                 </p>
                 <Link
-                  href="/cart"
+                  to="/cart"
                   className="mt-2 inline-block text-sm font-medium underline underline-offset-2"
                 >
                   View cart
@@ -166,7 +131,7 @@ export function CartFeedback({ children }: { children: ReactNode }) {
           ) : null}
 
           <Link
-            href="/cart"
+            to="/cart"
             aria-label={`Open cart${itemCount > 0 ? `, ${itemCount} item${itemCount === 1 ? "" : "s"}` : ""}`}
             className="fixed bottom-6 right-6 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >

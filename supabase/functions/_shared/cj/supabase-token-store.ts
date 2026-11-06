@@ -4,6 +4,7 @@ import { CjTokenStoreError } from "./errors.ts";
 import type { CjTokenStore, CjTokens } from "./token-store.ts";
 
 type TokenRow = {
+  open_id: string | null;
   access_token: string | null;
   refresh_token: string | null;
   access_expires_at: string | null;
@@ -30,7 +31,7 @@ export class SupabaseCjTokenStore implements CjTokenStore {
     const { data, error } = await this.admin
       .from("supplier_tokens")
       .select(
-        "access_token,refresh_token,access_expires_at,refresh_expires_at",
+        "open_id,access_token,refresh_token,access_expires_at,refresh_expires_at",
       )
       .eq("supplier", this.supplier)
       .maybeSingle<TokenRow>();
@@ -51,6 +52,7 @@ export class SupabaseCjTokenStore implements CjTokenStore {
     }
 
     return {
+      openId: data.open_id,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       accessExpiresAt: parseDate(data.access_expires_at),
@@ -62,6 +64,7 @@ export class SupabaseCjTokenStore implements CjTokenStore {
     const { error } = await this.admin.from("supplier_tokens").upsert(
       {
         supplier: this.supplier,
+        open_id: tokens.openId,
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
         access_expires_at: tokens.accessExpiresAt.toISOString(),

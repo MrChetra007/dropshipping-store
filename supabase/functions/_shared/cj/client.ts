@@ -39,6 +39,8 @@ export type CjRequestOptions<T> = {
   schema: ZodType<T>;
   requiresAuth?: boolean;
   retryNetwork?: boolean;
+  /** Some CJ endpoints return `data: null` on success (payBalance). */
+  allowEmptyData?: boolean;
 };
 
 export type CjClientOptions = {
@@ -141,6 +143,27 @@ export class CjClient {
     );
 
     return this.tokenPromise;
+  }
+
+  /**
+   * CJ signs webhooks with the account openId. Older token rows may not have it
+   * stored yet, so force one refresh/auth to capture it.
+   */
+  async getOpenId(): Promise<string> {
+    await this.getAccessToken();
+
+    let tokens = await this.tokenStore.get();
+
+    if (!tokens?.openId) {
+      await this.getAccessToken({ force: true });
+      tokens = await this.tokenStore.get();
+    }
+
+    if (!tokens?.openId) {
+      throw new CjValidationError("CJ did not return an openId");
+    }
+
+    return tokens.openId;
   }
 
   async request<T>(
@@ -255,6 +278,9 @@ export class CjClient {
     }
 
     await this.tokenStore.save({
+      openId: data.openId === null || data.openId === undefined
+        ? null
+        : String(data.openId),
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
       accessExpiresAt,
@@ -362,10 +388,12 @@ export class CjClient {
     }
 
     if (envelope.data === null || envelope.data === undefined) {
-      throw new CjValidationError(
-        `CJ returned no data for ${path}`,
-        envelope.requestId,
-      );
+      if (!options.allowEmptyData) {
+        throw new CjValidationError(
+          `CJ returned no data for ${path}`,
+          envelope.requestId,
+        );
+      }
     }
 
     const dataResult = options.schema.safeParse(envelope.data);

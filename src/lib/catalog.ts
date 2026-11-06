@@ -1,9 +1,6 @@
-import "server-only";
-
-import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase";
 import { toCents } from "@/lib/utils";
 import type { Database, Json } from "@/types/database";
 
@@ -143,7 +140,6 @@ function mapCategory(row: {
 }
 
 export async function getStoreSettings(): Promise<StoreSettings> {
-  const supabase = await createClient();
   const { data } = await supabase
     .from("settings")
     .select("value")
@@ -164,8 +160,42 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   };
 }
 
+export type PaymentInstructions = {
+  bankName: string | null;
+  accountName: string | null;
+  accountNumber: string | null;
+  swift: string | null;
+  instructions: string | null;
+};
+
+export async function getPaymentInstructions(): Promise<PaymentInstructions> {
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "public.payment_instructions")
+    .maybeSingle();
+
+  const value =
+    data?.value && typeof data.value === "object" && !Array.isArray(data.value)
+      ? (data.value as Record<string, Json>)
+      : {};
+
+  const read = (key: string): string | null => {
+    const item = value[key];
+
+    return typeof item === "string" && item.trim() ? item.trim() : null;
+  };
+
+  return {
+    bankName: read("bank_name"),
+    accountName: read("account_name"),
+    accountNumber: read("account_number"),
+    swift: read("swift"),
+    instructions: read("instructions"),
+  };
+}
+
 export async function listCategories(): Promise<CategorySummary[]> {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
     .select("id,slug,name,image_url")
@@ -183,7 +213,6 @@ export async function listCategories(): Promise<CategorySummary[]> {
 export async function getCategoryBySlug(
   slug: string,
 ): Promise<CategorySummary | null> {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
     .select("id,slug,name,image_url")
@@ -199,7 +228,7 @@ export async function getCategoryBySlug(
 }
 
 async function hydrateProductCards(
-  supabase: Client,
+  client: Client,
   rows: ProductRow[],
 ): Promise<ProductCard[]> {
   if (rows.length === 0) {
@@ -216,18 +245,18 @@ async function hydrateProductCards(
   ];
 
   const [variantResult, imageResult, categoryResult] = await Promise.all([
-    supabase
+    client
       .from("product_variants")
       .select("product_id,price,compare_at_price,stock,is_active")
       .in("product_id", ids)
       .eq("is_active", true),
-    supabase
+    client
       .from("product_images")
       .select("product_id,url,alt,sort_order")
       .in("product_id", ids)
       .order("sort_order", { ascending: true }),
     categoryIds.length > 0
-      ? supabase
+      ? client
           .from("categories")
           .select("id,slug,name,image_url")
           .in("id", categoryIds)
@@ -319,7 +348,6 @@ async function hydrateProductCards(
 export async function listProductCards(
   options: CatalogOptions = {},
 ): Promise<CatalogResult> {
-  const supabase = await createClient();
   const page = Math.max(1, options.page ?? 1);
   const perPage = Math.min(
     MAX_PAGE_SIZE,
@@ -416,7 +444,6 @@ export async function listProductCards(
 }
 
 export async function getShippingEstimates(): Promise<ShippingEstimate[]> {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("shipping_rates")
     .select("name,country_code,amount,free_over,min_days,max_days")
@@ -437,127 +464,124 @@ export async function getShippingEstimates(): Promise<ShippingEstimate[]> {
   }));
 }
 
-export const getProductDetail = cache(
-  async (slug: string): Promise<ProductDetail | null> => {
-    const supabase = await createClient();
-    const { data: product, error } = await supabase
-      .from("products")
+export async function getProductDetail(
+  slug: string,
+): Promise<ProductDetail | null> {
+  const { data: product, error } = await supabase
+    .from("products")
+    .select("id,slug,title,description,category_id,seo_title,seo_description")
+    .eq("slug", slug)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not load product: ${error.message}`);
+  }
+
+  if (!product) {
+    return null;
+  }
+
+  const [variantResult, imageResult, shippingRates] = await Promise.all([
+    supabase
+      .from("product_variants")
       .select(
-        "id,slug,title,description,category_id,seo_title,seo_description",
+        "id,sku,title,options,price,compare_at_price,currency,stock,is_active,sort_order",
       )
-      .eq("slug", slug)
-      .eq("status", "active")
-      .maybeSingle();
+      .eq("product_id", product.id)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("product_images")
+      .select("id,url,alt,variant_id,sort_order")
+      .eq("product_id", product.id)
+      .order("sort_order", { ascending: true }),
+    getShippingEstimates(),
+  ]);
 
-    if (error) {
-      throw new Error(`Could not load product: ${error.message}`);
-    }
-
-    if (!product) {
-      return null;
-    }
-
-    const [variantResult, imageResult, shippingRates] = await Promise.all([
-      supabase
-        .from("product_variants")
-        .select(
-          "id,sku,title,options,price,compare_at_price,currency,stock,is_active,sort_order",
-        )
-        .eq("product_id", product.id)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("product_images")
-        .select("id,url,alt,variant_id,sort_order")
-        .eq("product_id", product.id)
-        .order("sort_order", { ascending: true }),
-      getShippingEstimates(),
-    ]);
-
-    if (variantResult.error) {
-      throw new Error(
-        `Could not load product variants: ${variantResult.error.message}`,
-      );
-    }
-
-    if (imageResult.error) {
-      throw new Error(
-        `Could not load product images: ${imageResult.error.message}`,
-      );
-    }
-
-    const categoryResult = product.category_id
-      ? await supabase
-          .from("categories")
-          .select("id,slug,name,image_url")
-          .eq("id", product.category_id)
-          .eq("is_active", true)
-          .maybeSingle()
-      : null;
-
-    if (categoryResult?.error) {
-      throw new Error(
-        `Could not load product category: ${categoryResult.error.message}`,
-      );
-    }
-
-    const images: ProductImage[] = (imageResult.data ?? []).map((image) => ({
-      id: image.id,
-      url: image.url,
-      alt: image.alt,
-      variantId: image.variant_id,
-    }));
-
-    const imageByVariant = new Map<string, string>();
-
-    for (const image of images) {
-      if (image.variantId && !imageByVariant.has(image.variantId)) {
-        imageByVariant.set(image.variantId, image.url);
-      }
-    }
-
-    const variants: ProductVariant[] = (variantResult.data ?? []).map(
-      (variant) => ({
-        id: variant.id,
-        sku: variant.sku,
-        title: variant.title,
-        options: asRecord(variant.options),
-        priceCents: toCents(variant.price) ?? 0,
-        compareAtCents: toCents(variant.compare_at_price),
-        currency: variant.currency || DEFAULT_CURRENCY,
-        stock: variant.stock,
-        imageUrl: imageByVariant.get(variant.id) ?? null,
-      }),
+  if (variantResult.error) {
+    throw new Error(
+      `Could not load product variants: ${variantResult.error.message}`,
     );
+  }
 
-    const category = categoryResult?.data
-      ? mapCategory(categoryResult.data)
-      : null;
+  if (imageResult.error) {
+    throw new Error(
+      `Could not load product images: ${imageResult.error.message}`,
+    );
+  }
 
-    const related = product.category_id
-      ? (
-          await listProductCards({
-            categoryId: product.category_id,
-            excludeId: product.id,
-            perPage: 4,
-          })
-        ).products
-      : [];
+  const categoryResult = product.category_id
+    ? await supabase
+        .from("categories")
+        .select("id,slug,name,image_url")
+        .eq("id", product.category_id)
+        .eq("is_active", true)
+        .maybeSingle()
+    : null;
 
-    return {
-      product: {
-        id: product.id,
-        slug: product.slug,
-        title: product.title,
-        description: product.description,
-        seoTitle: product.seo_title,
-        seoDescription: product.seo_description,
-        category,
-      },
-      variants,
-      images,
-      shippingRates,
-      related,
-    };
-  },
-);
+  if (categoryResult?.error) {
+    throw new Error(
+      `Could not load product category: ${categoryResult.error.message}`,
+    );
+  }
+
+  const images: ProductImage[] = (imageResult.data ?? []).map((image) => ({
+    id: image.id,
+    url: image.url,
+    alt: image.alt,
+    variantId: image.variant_id,
+  }));
+
+  const imageByVariant = new Map<string, string>();
+
+  for (const image of images) {
+    if (image.variantId && !imageByVariant.has(image.variantId)) {
+      imageByVariant.set(image.variantId, image.url);
+    }
+  }
+
+  const variants: ProductVariant[] = (variantResult.data ?? []).map(
+    (variant) => ({
+      id: variant.id,
+      sku: variant.sku,
+      title: variant.title,
+      options: asRecord(variant.options),
+      priceCents: toCents(variant.price) ?? 0,
+      compareAtCents: toCents(variant.compare_at_price),
+      currency: variant.currency || DEFAULT_CURRENCY,
+      stock: variant.stock,
+      imageUrl: imageByVariant.get(variant.id) ?? null,
+    }),
+  );
+
+  const category = categoryResult?.data
+    ? mapCategory(categoryResult.data)
+    : null;
+
+  const related = product.category_id
+    ? (
+        await listProductCards({
+          categoryId: product.category_id,
+          excludeId: product.id,
+          perPage: 4,
+        })
+      ).products
+    : [];
+
+  return {
+    product: {
+      id: product.id,
+      slug: product.slug,
+      title: product.title,
+      description: product.description,
+      seoTitle: product.seo_title,
+      seoDescription: product.seo_description,
+      category,
+    },
+    variants,
+    images,
+    shippingRates,
+    related,
+  };
+}

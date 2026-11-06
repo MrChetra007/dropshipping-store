@@ -1,5 +1,12 @@
 # CJdropshipping Client Integration & Technical Specification (v2.0)
 
+> **Correction (2026-11-01):** The auth, payment, and webhook examples below are
+> outdated. Verified behavior is in `docs/cj-notes.md`: auth is API-key only;
+> pay a draft with `POST /shopping/pay/payBalance` (`orderId`) or
+> `POST /shopping/pay/payBalanceV2` (`shipmentOrderId`); webhook `sign` is
+> `Base64(HMAC-SHA256(openId, rawBody))` and the payload uses
+> `messageId`/`type`/`messageType`/`params`. Use `cj-notes.md` for implementation.
+
 > **Target Audience:** Autonomous AI Agents, Integration Engineers, Software Architects.  
 > **Purpose:** Detailed operational reference for integrating CJdropshipping APIs, managing order creation workflows, handling payment models, verifying webhooks, and interacting via MCP (Model Context Protocol).
 

@@ -79,6 +79,23 @@ const getOrderInputSchema = z
 
 export type CjGetOrderInput = z.input<typeof getOrderInputSchema>;
 
+const payBalanceInputSchema = z
+  .object({
+    orderId: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export type CjPayBalanceInput = z.input<typeof payBalanceInputSchema>;
+
+const payBalanceV2InputSchema = z
+  .object({
+    shipmentOrderId: z.string().trim().min(1).max(200),
+    payId: z.string().trim().min(1).max(200).optional(),
+  })
+  .strict();
+
+export type CjPayBalanceV2Input = z.input<typeof payBalanceV2InputSchema>;
+
 export async function createOrder(
   client: CjClient,
   input: CjCreateOrderInput,
@@ -142,5 +159,41 @@ export async function getBalance(client: CjClient): Promise<CjBalance> {
   return client.request("/shopping/pay/getBalance", {
     method: "GET",
     schema: cjBalanceSchema,
+  });
+}
+
+/**
+ * Pay a single (non-parent) order from the CJ wallet.
+ * `data` is null on success.
+ */
+export async function payBalance(
+  client: CjClient,
+  input: CjPayBalanceInput,
+): Promise<void> {
+  const body = payBalanceInputSchema.parse(input);
+
+  await client.request("/shopping/pay/payBalance", {
+    method: "POST",
+    body,
+    schema: z.unknown(),
+    allowEmptyData: true,
+  });
+}
+
+/**
+ * Pay a parent/shipment order from the CJ wallet. Use this when createOrderV2
+ * returned a shipmentOrderId. `data` is null on success.
+ */
+export async function payBalanceV2(
+  client: CjClient,
+  input: CjPayBalanceV2Input,
+): Promise<void> {
+  const body = payBalanceV2InputSchema.parse(input);
+
+  await client.request("/shopping/pay/payBalanceV2", {
+    method: "POST",
+    body,
+    schema: z.unknown(),
+    allowEmptyData: true,
   });
 }

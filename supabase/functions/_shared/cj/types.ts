@@ -268,6 +268,7 @@ export const cjOrderSchema = z
   .object({
     orderId: z.string().min(1),
     orderNum: nullableString,
+    shipmentOrderId: nullableString,
     platformOrderId: nullableString,
     cjOrderId: nullableString,
     cjOrderCode: nullableString,
