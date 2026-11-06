@@ -56,9 +56,9 @@ export function CheckoutPage() {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
         <h1 className="text-3xl font-semibold tracking-tight">Checkout</h1>
-        <div className="mt-8 rounded-xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
+        <div className="mt-8 rounded-xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
           <p className="font-medium">Your cart is empty</p>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-slate-500">
             Add a product before checking out.
           </p>
           <ButtonLink
@@ -95,7 +95,7 @@ export function CheckoutPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-3xl font-semibold tracking-tight">Checkout</h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-slate-500">
             Shipping and totals are confirmed on the server before payment.
           </p>
         </div>

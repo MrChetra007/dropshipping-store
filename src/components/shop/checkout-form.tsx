@@ -51,7 +51,7 @@ const COUNTRIES = [
 ];
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-300";
+  "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-300";
 
 function ratesForCountry(
   rates: CheckoutShippingRate[],
@@ -185,7 +185,7 @@ export function CheckoutForm({
               placeholder="you@example.com"
             />
           </label>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-slate-500">
             Your order confirmation and tracking updates are sent here.
           </p>
         </section>
@@ -218,7 +218,7 @@ export function CheckoutForm({
             <label className="block space-y-1.5 text-sm sm:col-span-2">
               <span className="font-medium">
                 Address line 2{" "}
-                <span className="font-normal text-zinc-500">(optional)</span>
+                <span className="font-normal text-slate-500">(optional)</span>
               </span>
               <Input
                 name="line2"
@@ -240,7 +240,7 @@ export function CheckoutForm({
             <label className="block space-y-1.5 text-sm">
               <span className="font-medium">
                 State / region{" "}
-                <span className="font-normal text-zinc-500">(optional)</span>
+                <span className="font-normal text-slate-500">(optional)</span>
               </span>
               <Input
                 name="state"
@@ -278,7 +278,7 @@ export function CheckoutForm({
             <label className="block space-y-1.5 text-sm sm:col-span-2">
               <span className="font-medium">
                 Phone{" "}
-                <span className="font-normal text-zinc-500">(optional)</span>
+                <span className="font-normal text-slate-500">(optional)</span>
               </span>
               <Input
                 name="phone"
@@ -297,7 +297,7 @@ export function CheckoutForm({
               {countryRates.map((rate) => (
                 <label
                   key={`${rate.countryCode}-${rate.name}`}
-                  className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-zinc-200 px-4 py-3 text-sm has-checked:border-zinc-900 dark:border-zinc-800 dark:has-checked:border-zinc-100"
+                  className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-200 px-4 py-3 text-sm has-checked:border-slate-900 dark:border-slate-800 dark:has-checked:border-slate-100"
                 >
                   <span className="flex items-center gap-3">
                     <input
@@ -310,9 +310,9 @@ export function CheckoutForm({
                     />
                     <span>
                       <span className="font-medium">{rate.name}</span>
-                      <span className="block text-xs text-zinc-500">
+                      <span className="block text-xs text-slate-500">
                         {rate.minDays !== null && rate.maxDays !== null
-                          ? `${rate.minDays}â€“${rate.maxDays} business days`
+                          ? `${rate.minDays}-${rate.maxDays} business days`
                           : "Delivery time confirmed after dispatch"}
                       </span>
                     </span>
@@ -326,7 +326,7 @@ export function CheckoutForm({
                       formatCents(rate.amountCents, cart.currency)
                     )}
                     {rate.freeOverCents !== null ? (
-                      <span className="block text-xs text-zinc-500">
+                      <span className="block text-xs text-slate-500">
                         Free over{" "}
                         {formatCents(rate.freeOverCents, cart.currency)}
                       </span>
@@ -350,7 +350,7 @@ export function CheckoutForm({
           <label className="block space-y-1.5 text-sm">
             <span className="font-medium">
               Discount code{" "}
-              <span className="font-normal text-zinc-500">(optional)</span>
+              <span className="font-normal text-slate-500">(optional)</span>
             </span>
             <Input
               name="discountCode"
@@ -362,26 +362,26 @@ export function CheckoutForm({
           <label className="block space-y-1.5 text-sm">
             <span className="font-medium">
               Order note{" "}
-              <span className="font-normal text-zinc-500">(optional)</span>
+              <span className="font-normal text-slate-500">(optional)</span>
             </span>
             <textarea
               name="note"
               rows={3}
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-300"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-300"
             />
           </label>
         </section>
       </div>
 
-      <aside className="h-fit space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-5 lg:sticky lg:top-24 dark:border-zinc-800 dark:bg-zinc-900">
+      <aside className="h-fit space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5 lg:sticky lg:top-24 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-medium">Order summary</h2>
 
         <ul className="space-y-3">
           {cart.items.map((item) => (
             <li key={item.id} className="flex gap-3">
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
                 {item.imageUrl ? (
                   <SmartImage
                     src={item.imageUrl}
@@ -394,9 +394,9 @@ export function CheckoutForm({
               </div>
               <div className="min-w-0 flex-1 text-sm">
                 <p className="line-clamp-2">{item.productTitle}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-slate-500">
                   {item.variantTitle !== "Default"
-                    ? `${item.variantTitle} Â· `
+                    ? `${item.variantTitle} - `
                     : ""}
                   Qty {item.quantity}
                 </p>
@@ -408,24 +408,24 @@ export function CheckoutForm({
           ))}
         </ul>
 
-        <dl className="space-y-2 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
+        <dl className="space-y-2 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <dt className="text-zinc-500">Subtotal</dt>
+            <dt className="text-slate-500">Subtotal</dt>
             <dd className="tabular-nums">
               {formatCents(cart.subtotalCents, cart.currency)}
             </dd>
           </div>
           <div className="flex items-center justify-between">
-            <dt className="text-zinc-500">Shipping</dt>
+            <dt className="text-slate-500">Shipping</dt>
             <dd className="tabular-nums">
               {selectedRate
                 ? shippingCents === 0
                   ? "Free"
                   : formatCents(shippingCents, cart.currency)
-                : "â€”"}
+                : "-"}
             </dd>
           </div>
-          <div className="flex items-center justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-2 font-semibold dark:border-slate-800">
             <dt>Total</dt>
             <dd className="tabular-nums">
               {formatCents(totalCents, cart.currency)}
@@ -446,15 +446,15 @@ export function CheckoutForm({
           type="submit"
           disabled={submitting || !selectedRate}
           aria-busy={submitting}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
         >
           {submitting ? <Spinner /> : null}
-          {submitting ? "Starting checkoutâ€¦" : "Continue to payment"}
+          {submitting ? "Starting checkout..." : "Continue to payment"}
         </button>
 
-        <p className="text-xs text-zinc-500">
-          Totals are recalculated securely on the server. Discounts are applied
-          after the code is validated.
+        <p className="flex justify-center gap-1.5 text-xs text-slate-500">
+          <span aria-hidden>Secure</span> 60-day money-back guarantee - Totals are
+          recalculated securely on the server before payment.
         </p>
       </aside>
     </form>

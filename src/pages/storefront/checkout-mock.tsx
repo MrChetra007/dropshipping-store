@@ -54,15 +54,15 @@ export function CheckoutMockPage() {
           Development mode · mock payment provider
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Order {order.orderNumber}</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-slate-500">
           The order was created as <strong>{order.status}</strong>. No real
           payment has been taken.
         </p>
       </div>
 
-      <div className="mt-6 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <div className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
         <h2 className="font-medium">Test the payment webhook</h2>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+        <p className="mt-1 max-w-2xl text-sm text-slate-500">
           This button signs a <code>payment.paid</code> event and sends it
           through the real webhook handler, including signature verification and
           idempotency. Use it more than once to confirm a replay does not create
@@ -90,7 +90,7 @@ export function CheckoutMockPage() {
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           to="/products"
-          className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 px-5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:text-zinc-100"
+          className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 px-5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900 dark:text-slate-100"
         >
           Continue shopping
         </Link>

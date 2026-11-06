@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 
+import { NotificationBell } from "@/components/admin/notification-bell";
 import { RequireAdmin } from "@/features/auth/require-auth";
 import { signOut } from "@/features/auth/auth-actions";
 
@@ -54,6 +55,7 @@ export function AdminLayout() {
               </Link>
             </nav>
             <div className="flex items-center gap-3">
+              <NotificationBell />
               <span className="hidden text-sm text-zinc-500 sm:inline">
                 Admin
               </span>

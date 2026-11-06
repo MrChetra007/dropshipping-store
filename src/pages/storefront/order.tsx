@@ -60,7 +60,7 @@ function statusTone(status: string): string {
     return "border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300";
   }
 
-  return "border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300";
+  return "border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300";
 }
 
 function eventLabel(type: string): string {
@@ -105,11 +105,11 @@ export function OrderPage() {
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-sm text-zinc-500">Order</p>
+          <p className="text-sm text-slate-500">Order</p>
           <h1 className="text-3xl font-semibold tracking-tight">
             {order.orderNumber}
           </h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-slate-500">
             Placed {dateFormat.format(new Date(order.createdAt))} · {order.email}
           </p>
         </div>
@@ -119,7 +119,7 @@ export function OrderPage() {
           >
             {statusLabel}
           </span>
-          <span className="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+          <span className="inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             {fulfillmentLabels[order.fulfillmentStatus] ??
               order.fulfillmentStatus.replaceAll("_", " ")}
           </span>
@@ -131,10 +131,10 @@ export function OrderPage() {
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <section className="rounded-xl border border-slate-200 p-5 dark:border-slate-800">
           <h2 className="font-medium">Tracking</h2>
           {order.shipments.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">
+            <p className="mt-3 text-sm text-slate-500">
               {order.status === "shipped" || order.status === "delivered"
                 ? "The carrier has not provided a tracking number yet. Check back soon."
                 : "Tracking appears here as soon as your order ships. Delivery usually takes 7–25 days depending on the destination."}
@@ -144,18 +144,18 @@ export function OrderPage() {
               {order.shipments.map((shipment) => (
                 <li
                   key={shipment.trackingNumber}
-                  className="rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800"
+                  className="rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-800"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-medium">
                         {shipment.carrier ?? "Carrier"}
                       </p>
-                      <p className="mt-1 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                      <p className="mt-1 font-mono text-xs text-slate-600 dark:text-slate-400">
                         {shipment.trackingNumber}
                       </p>
                     </div>
-                    <span className="inline-flex rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                    <span className="inline-flex rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-400">
                       {shipmentStatusLabels[shipment.status] ??
                         shipment.status.replaceAll("_", " ")}
                     </span>
@@ -176,22 +176,22 @@ export function OrderPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <section className="rounded-xl border border-slate-200 p-5 dark:border-slate-800">
           <h2 className="font-medium">Timeline</h2>
           {order.events.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">
+            <p className="mt-3 text-sm text-slate-500">
               Order updates will appear here.
             </p>
           ) : (
             <ol className="mt-3 space-y-4">
               {order.events.map((event, index) => (
                 <li key={`${event.type}-${index}`} className="flex gap-3">
-                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100" />
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-900 dark:bg-slate-100" />
                   <div>
                     <p className="text-sm font-medium">
                       {event.message ?? eventLabel(event.type)}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-slate-500">
                       {dateFormat.format(new Date(event.createdAt))}
                     </p>
                   </div>
@@ -205,19 +205,19 @@ export function OrderPage() {
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           to="/products"
-          className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="inline-flex h-11 items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
         >
           Continue shopping
         </Link>
         <Link
           to="/account"
-          className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 px-5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:text-zinc-100"
+          className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 px-5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900 dark:text-slate-100"
         >
           Your account
         </Link>
       </div>
 
-      <p className="mt-6 text-xs text-zinc-500">
+      <p className="mt-6 text-xs text-slate-500">
         Keep this page link private — it includes the access token for this
         order.
       </p>

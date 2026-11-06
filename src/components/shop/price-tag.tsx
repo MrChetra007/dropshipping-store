@@ -13,7 +13,7 @@ export function PriceTag({
 }) {
   if (priceCents === null) {
     return (
-      <span className={cn("text-sm text-zinc-500", className)}>
+      <span className={cn("text-sm text-slate-500", className)}>
         Price unavailable
       </span>
     );
@@ -30,7 +30,7 @@ export function PriceTag({
         {formatCents(priceCents, currency)}
       </span>
       {showCompareAt ? (
-        <span className="text-sm text-zinc-400 line-through tabular-nums">
+        <span className="text-sm text-slate-400 line-through tabular-nums">
           {formatCents(compareAtCents, currency)}
         </span>
       ) : null}

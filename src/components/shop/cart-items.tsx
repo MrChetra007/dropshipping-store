@@ -91,7 +91,7 @@ export function CartItems({ cart }: { cart: Cart }) {
         </p>
       ) : null}
 
-      <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+      <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
         {cart.items.map((item) => {
           const maxQuantity = Math.max(
             1,
@@ -101,12 +101,12 @@ export function CartItems({ cart }: { cart: Cart }) {
 
           return (
             <li key={item.id} className="flex gap-4 p-4">
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-900">
                 {item.imageUrl ? (
                   <SmartImage src={item.imageUrl} alt="" sizes="80px" className="object-cover" />
                 ) : null}
                 {rowPending ? (
-                  <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-zinc-600 dark:bg-zinc-950/70 dark:text-zinc-300">
+                  <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-slate-600 dark:bg-slate-950/70 dark:text-slate-300">
                     <Spinner />
                   </span>
                 ) : null}
@@ -122,7 +122,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                       {item.productTitle}
                     </Link>
                     {item.variantTitle && item.variantTitle !== "Default" ? (
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-slate-500">
                         {item.variantTitle}
                       </p>
                     ) : null}
@@ -141,7 +141,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                 <div className="mt-auto flex flex-wrap items-center gap-3 pt-2">
                   <label
                     htmlFor={`quantity-${item.variantId}`}
-                    className="text-xs text-zinc-500"
+                    className="text-xs text-slate-500"
                   >
                     Qty
                   </label>
@@ -153,7 +153,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                     onChange={(event) =>
                       changeQuantity(item.variantId, Number(event.target.value))
                     }
-                    className="h-8 rounded-lg border border-zinc-300 bg-white px-2 text-sm disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900"
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-sm disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900"
                   >
                     {Array.from({ length: maxQuantity }, (_, index) => index + 1).map(
                       (value) => (
@@ -167,7 +167,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                     type="button"
                     onClick={() => changeQuantity(item.variantId, 0)}
                     disabled={rowPending}
-                    className="inline-flex items-center gap-1.5 text-xs text-zinc-500 underline underline-offset-2 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-red-400"
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-500 underline underline-offset-2 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-red-400"
                   >
                     {rowPending && pending?.action === "remove" ? (
                       <Spinner className="h-3 w-3" />
@@ -177,7 +177,7 @@ export function CartItems({ cart }: { cart: Cart }) {
                       : "Remove"}
                   </button>
                   {rowPending && pending?.action === "update" ? (
-                    <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1.5 text-xs text-slate-500">
                       <Spinner className="h-3 w-3" />
                       Updating…
                     </span>

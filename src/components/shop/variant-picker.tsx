@@ -157,7 +157,7 @@ export function VariantPicker({
             : "Out of stock"}
         </p>
         {selected.sku ? (
-          <p className="font-mono text-xs text-zinc-500">SKU {selected.sku}</p>
+          <p className="font-mono text-xs text-slate-500">SKU {selected.sku}</p>
         ) : null}
       </div>
 
@@ -181,8 +181,8 @@ export function VariantPicker({
                       className={cn(
                         "inline-flex h-9 items-center rounded-lg border px-3 text-sm transition-colors",
                         isSelected
-                          ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                          : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900",
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                          : "border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900",
                         !canSelect && "cursor-not-allowed opacity-40",
                       )}
                     >
@@ -212,8 +212,8 @@ export function VariantPicker({
                   className={cn(
                     "inline-flex h-9 items-center rounded-lg border px-3 text-sm transition-colors",
                     isSelected
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                      : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900",
+                      ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+                      : "border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900",
                     !canSelect && "cursor-not-allowed opacity-40",
                   )}
                 >
@@ -224,18 +224,18 @@ export function VariantPicker({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-zinc-500">{selected.title}</p>
+        <p className="text-sm text-slate-500">{selected.title}</p>
       )}
 
       <div className="space-y-3">
         <div className="flex gap-2">
-          <div className="inline-flex h-11 items-center rounded-lg border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
             <button
               type="button"
               onClick={() => setQuantity((current) => Math.max(1, current - 1))}
               disabled={!available || quantity <= 1}
               aria-label="Decrease quantity"
-              className="flex h-full w-10 items-center justify-center text-lg text-zinc-600 transition-colors hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="flex h-full w-10 items-center justify-center text-lg text-slate-600 transition-colors hover:text-slate-900 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-100"
             >
               −
             </button>
@@ -252,7 +252,7 @@ export function VariantPicker({
               }
               disabled={!available || quantity >= maxQuantity}
               aria-label="Increase quantity"
-              className="flex h-full w-10 items-center justify-center text-lg text-zinc-600 transition-colors hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="flex h-full w-10 items-center justify-center text-lg text-slate-600 transition-colors hover:text-slate-900 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-100"
             >
               +
             </button>
@@ -262,7 +262,7 @@ export function VariantPicker({
             onClick={add}
             disabled={!available || status === "adding"}
             aria-busy={status === "adding"}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
           >
             {status === "adding" ? <Spinner /> : null}
             {status === "adding"

@@ -35,8 +35,8 @@ export function CategoryChips({
     cn(
       "inline-flex h-9 items-center rounded-full border px-4 text-sm transition-colors",
       active
-        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-        : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900",
+        ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+        : "border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900",
     );
 
   return (

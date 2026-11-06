@@ -21,13 +21,13 @@ export function ProductGallery({
 
   if (!active) {
     return (
-      <div className="aspect-square rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900" />
+      <div className="aspect-square rounded-2xl border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" />
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="relative aspect-square overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900">
         <SmartImage
           src={active.url}
           alt={active.alt ?? title}
@@ -47,10 +47,10 @@ export function ProductGallery({
               aria-label={`Show image ${index + 1} of ${images.length}`}
               aria-pressed={index === activeIndex}
               className={cn(
-                "relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-zinc-100 transition-colors dark:bg-zinc-900",
+                "relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 bg-slate-100 transition-colors dark:bg-slate-900",
                 index === activeIndex
-                  ? "border-zinc-900 dark:border-zinc-100"
-                  : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-700",
+                  ? "border-slate-900 dark:border-slate-100"
+                  : "border-transparent hover:border-slate-300 dark:hover:border-slate-700",
               )}
             >
               <SmartImage src={image.url} alt="" sizes="64px" className="object-cover" />

@@ -23,7 +23,7 @@ export function AdminOrdersPage() {
   });
 
   usePageMetadata({
-    title: "Orders | Admin | CJ Dropshipping Store",
+    title: "Orders | Admin | KinetiCore Labs",
   });
 
   if (ordersQuery.isLoading) {

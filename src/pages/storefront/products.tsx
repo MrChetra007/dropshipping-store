@@ -66,8 +66,8 @@ export function ProductsPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
-      <nav aria-label="Breadcrumb" className="text-sm text-zinc-500">
-        <Link to="/" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+      <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
+        <Link to="/" className="hover:text-slate-900 dark:hover:text-slate-100">
           Home
         </Link>
         <span className="px-2">/</span>
@@ -75,17 +75,17 @@ export function ProductsPage() {
           <>
             <Link
               to="/products"
-              className="hover:text-zinc-900 dark:hover:text-zinc-100"
+              className="hover:text-slate-900 dark:hover:text-slate-100"
             >
               Products
             </Link>
             <span className="px-2">/</span>
-            <span className="text-zinc-900 dark:text-zinc-100">
+            <span className="text-slate-900 dark:text-slate-100">
               {activeCategory.name}
             </span>
           </>
         ) : (
-          <span className="text-zinc-900 dark:text-zinc-100">Products</span>
+          <span className="text-slate-900 dark:text-slate-100">Products</span>
         )}
       </nav>
 
@@ -94,7 +94,7 @@ export function ProductsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">
             {activeCategory ? activeCategory.name : "All products"}
           </h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-slate-500">
             {result.total} product{result.total === 1 ? "" : "s"}
             {q ? ` matching “${q}”` : ""}
             {result.pageCount > 1

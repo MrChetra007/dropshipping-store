@@ -97,7 +97,7 @@ export function ProductDetailPage() {
       plainDescription || `Shop ${product.title} with tracked delivery.`,
     image: images.map((image) => image.url),
     sku: variants[0]?.sku,
-    brand: { "@type": "Brand", name: settings?.name ?? "CJ Store" },
+    brand: { "@type": "Brand", name: settings?.name ?? "KinetiCore Labs" },
     offers:
       variants.length > 0
         ? variants.map((variant) => ({
@@ -123,14 +123,14 @@ export function ProductDetailPage() {
         }}
       />
 
-      <nav aria-label="Breadcrumb" className="text-sm text-zinc-500">
-        <Link to="/" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+      <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
+        <Link to="/" className="hover:text-slate-900 dark:hover:text-slate-100">
           Home
         </Link>
         <span className="px-2">/</span>
         <Link
           to="/products"
-          className="hover:text-zinc-900 dark:hover:text-zinc-100"
+          className="hover:text-slate-900 dark:hover:text-slate-100"
         >
           Products
         </Link>
@@ -139,14 +139,14 @@ export function ProductDetailPage() {
             <span className="px-2">/</span>
             <Link
               to={`/categories/${product.category.slug}`}
-              className="hover:text-zinc-900 dark:hover:text-zinc-100"
+              className="hover:text-slate-900 dark:hover:text-slate-100"
             >
               {product.category.name}
             </Link>
           </>
         ) : null}
         <span className="px-2">/</span>
-        <span className="line-clamp-1 text-zinc-900 dark:text-zinc-100">
+        <span className="line-clamp-1 text-slate-900 dark:text-slate-100">
           {product.title}
         </span>
       </nav>
@@ -159,7 +159,7 @@ export function ProductDetailPage() {
             {product.category ? (
               <Link
                 to={`/categories/${product.category.slug}`}
-                className="text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className="text-xs font-medium uppercase tracking-wide text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
               >
                 {product.category.name}
               </Link>
@@ -183,20 +183,41 @@ export function ProductDetailPage() {
             }))}
           />
 
-          <div className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-50/60 p-4 dark:border-cyan-500/20 dark:bg-cyan-500/5">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              60-Day At-Home Trial
+            </p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              Walk, climb stairs, or run pain-free - or get a 100% refund.
+            </p>
+          </div>
+
+          <ul className="grid grid-cols-3 gap-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400">
+            <li className="rounded-lg border border-slate-200 bg-white px-2 py-3 dark:border-slate-700 dark:bg-slate-900">
+              Tracked, insured shipping
+            </li>
+            <li className="rounded-lg border border-slate-200 bg-white px-2 py-3 dark:border-slate-700 dark:bg-slate-900">
+              60-day at-home trial
+            </li>
+            <li className="rounded-lg border border-slate-200 bg-white px-2 py-3 dark:border-slate-700 dark:bg-slate-900">
+              Non-invasive design
+            </li>
+          </ul>
+
+          <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
             <details className="group" open>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
                 Delivery &amp; shipping
                 <span
                   aria-hidden
-                  className="text-lg font-normal text-zinc-400"
+                  className="text-lg font-normal text-slate-400"
                 >
                   <span className="group-open:hidden">+</span>
                   <span className="hidden group-open:inline">−</span>
                 </span>
               </summary>
               <div className="space-y-3 px-5 pb-5 text-sm">
-                <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                <ul className="space-y-1 text-slate-600 dark:text-slate-400">
                   {shippingEstimates.map((rate) => (
                     <li key={`${rate.countryCode}-${rate.name}`}>
                       {countryNames[rate.countryCode] ?? rate.countryCode}:{" "}
@@ -213,9 +234,9 @@ export function ProductDetailPage() {
                     </li>
                   ) : null}
                 </ul>
-                <p className="text-xs text-zinc-500">
-                  Orders are dispatched from our supplier. Tracking is added as
-                  soon as your parcel is on its way.
+                <p className="text-xs text-slate-500">
+                  Orders ship from our fulfillment partner - tracking is added
+                  the moment your parcel is on its way.
                 </p>
               </div>
             </details>
@@ -225,18 +246,19 @@ export function ProductDetailPage() {
                 Returns &amp; support
                 <span
                   aria-hidden
-                  className="text-lg font-normal text-zinc-400"
+                  className="text-lg font-normal text-slate-400"
                 >
                   <span className="group-open:hidden">+</span>
                   <span className="hidden group-open:inline">−</span>
                 </span>
               </summary>
-              <div className="space-y-2 px-5 pb-5 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="space-y-2 px-5 pb-5 text-sm text-slate-600 dark:text-slate-400">
                 <p>
-                  If something arrives damaged or incorrect, contact support
-                  with your order number and a photo, and we will make it right.
+                  Every order includes our 60-day money-back guarantee. If
+                  something arrives damaged or incorrect, contact support with
+                  your order number and a photo, and we will make it right.
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-slate-500">
                   Keep the packaging until your order is confirmed.
                 </p>
               </div>
@@ -251,7 +273,7 @@ export function ProductDetailPage() {
             Product details
           </h2>
           <div
-            className="space-y-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400 [&_a]:underline [&_a]:underline-offset-2 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-5 [&_li]:list-disc [&_table]:w-full"
+            className="space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-400 [&_a]:underline [&_a]:underline-offset-2 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-5 [&_li]:list-disc [&_table]:w-full"
             dangerouslySetInnerHTML={{
               __html: sanitizeDescription(product.description),
             }}
@@ -268,7 +290,7 @@ export function ProductDetailPage() {
             {product.category ? (
               <Link
                 to={`/categories/${product.category.slug}`}
-                className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
               >
                 More in {product.category.name} →
               </Link>

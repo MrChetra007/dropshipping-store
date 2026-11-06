@@ -105,11 +105,11 @@ export function CartFeedback({ children }: { children: ReactNode }) {
             <div
               role="status"
               aria-live="polite"
-              className="fixed inset-x-4 bottom-24 z-50 mx-auto flex max-w-sm items-start gap-3 rounded-xl border border-zinc-200 border-l-4 border-l-emerald-500 bg-white p-4 shadow-xl dark:border-zinc-800 dark:border-l-emerald-500 dark:bg-zinc-900 sm:inset-x-auto sm:right-6 sm:mx-0 sm:w-80"
+              className="fixed inset-x-4 bottom-24 z-50 mx-auto flex max-w-sm items-start gap-3 rounded-xl border border-slate-200 border-l-4 border-l-emerald-500 bg-white p-4 shadow-xl dark:border-slate-800 dark:border-l-emerald-500 dark:bg-slate-900 sm:inset-x-auto sm:right-6 sm:mx-0 sm:w-80"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Added to cart</p>
-                <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-0.5 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
                   {toast.quantity} × {toast.title}
                 </p>
                 <Link
@@ -123,7 +123,7 @@ export function CartFeedback({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={dismiss}
                 aria-label="Dismiss notification"
-                className="-m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                className="-m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               >
                 ×
               </button>
@@ -133,11 +133,11 @@ export function CartFeedback({ children }: { children: ReactNode }) {
           <Link
             to="/cart"
             aria-label={`Open cart${itemCount > 0 ? `, ${itemCount} item${itemCount === 1 ? "" : "s"}` : ""}`}
-            className="fixed bottom-6 right-6 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-white shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="fixed bottom-6 right-6 z-50 inline-flex h-14 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-medium text-white shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
           >
             <span>Cart</span>
             {itemCount > 0 ? (
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-xs font-semibold tabular-nums text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-xs font-semibold tabular-nums text-slate-900 dark:bg-slate-900 dark:text-slate-100">
                 {itemCount}
               </span>
             ) : null}

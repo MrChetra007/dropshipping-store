@@ -105,7 +105,7 @@ export function SearchForm({
         {searching ? (
           <span
             aria-hidden
-            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-zinc-400 ${
+            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${
               value ? "right-10" : "right-3"
             }`}
           >
@@ -117,7 +117,7 @@ export function SearchForm({
             type="button"
             onClick={clear}
             aria-label="Clear search"
-            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
           >
             ×
           </button>
@@ -127,7 +127,7 @@ export function SearchForm({
         type="submit"
         disabled={searching}
         aria-busy={searching}
-        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
       >
         {searching ? <Spinner /> : null}
         {searching ? "Searching…" : "Search"}

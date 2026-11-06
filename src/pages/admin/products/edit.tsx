@@ -17,7 +17,7 @@ export function AdminProductEditPage() {
   });
 
   usePageMetadata({
-    title: "Edit product | Admin | CJ Dropshipping Store",
+    title: "Edit product | Admin | KinetiCore Labs",
   });
 
   if (productQuery.isLoading) {

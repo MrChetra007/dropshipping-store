@@ -53,7 +53,7 @@ export function CheckoutSuccessPage() {
         <h1 className="text-3xl font-semibold tracking-tight">
           {paid ? "Payment confirmed" : "Thank you for your order"}
         </h1>
-        <p className="max-w-2xl text-sm text-zinc-500">
+        <p className="max-w-2xl text-sm text-slate-500">
           {paid
             ? `We received your payment and sent a confirmation to ${order.email}. We will email tracking details as soon as your order ships.`
             : `We are confirming your payment. You will receive an email at ${order.email} once it is confirmed.`}
@@ -70,13 +70,13 @@ export function CheckoutSuccessPage() {
             pathname: `/orders/${encodeURIComponent(order.orderNumber)}`,
             search: `?token=${encodeURIComponent(token ?? "")}`,
           }}
-          className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="inline-flex h-11 items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
         >
           View order & tracking
         </Link>
         <Link
           to="/products"
-          className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 px-5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:text-zinc-100"
+          className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 px-5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900 dark:text-slate-100"
         >
           Continue shopping
         </Link>

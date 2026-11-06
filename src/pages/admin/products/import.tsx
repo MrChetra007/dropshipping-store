@@ -38,7 +38,7 @@ export function AdminImportPage() {
   });
 
   usePageMetadata({
-    title: "Import products | Admin | CJ Dropshipping Store",
+    title: "Import products | Admin | KinetiCore Labs",
   });
 
   return (

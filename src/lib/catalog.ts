@@ -152,7 +152,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       : {};
 
   return {
-    name: typeof value.name === "string" ? value.name : "CJ Store",
+    name: typeof value.name === "string" ? value.name : "KinetiCore Labs",
     currency:
       typeof value.currency === "string" ? value.currency : DEFAULT_CURRENCY,
     support_email:

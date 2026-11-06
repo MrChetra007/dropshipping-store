@@ -11,8 +11,8 @@ import { NotFoundPage } from "@/pages/not-found";
 
 function InstructionRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-200 py-2 text-sm last:border-0 dark:border-zinc-800">
-      <span className="text-zinc-500">{label}</span>
+    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 py-2 text-sm last:border-0 dark:border-slate-800">
+      <span className="text-slate-500">{label}</span>
       <span className="font-mono font-medium">{value}</span>
     </div>
   );
@@ -73,14 +73,14 @@ export function CheckoutManualPage() {
         <h1 className="text-3xl font-semibold tracking-tight">
           Order {order.orderNumber}
         </h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-slate-500">
           {paid
             ? "Payment has been confirmed. Your order is being prepared."
             : `Transfer the amount due below and use ${order.orderNumber} as the payment reference.`}
         </p>
       </div>
 
-      <div className="mt-6 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <div className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-medium">Amount due</h2>
           <p className="text-2xl font-semibold tabular-nums">
@@ -116,7 +116,7 @@ export function CheckoutManualPage() {
             ) : null}
             <InstructionRow label="Reference" value={order.orderNumber} />
 
-            <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
               {instructions?.instructions ??
                 "After transferring the full amount, keep this page. We confirm payments within one business day and email you when the order is queued."}
             </p>
@@ -141,7 +141,7 @@ export function CheckoutManualPage() {
           </div>
         )}
 
-        <p className="mt-4 text-xs text-zinc-500">
+        <p className="mt-4 text-xs text-slate-500">
           Keep this page link private — it contains the access token for this
           order.
         </p>
@@ -157,13 +157,13 @@ export function CheckoutManualPage() {
             pathname: `/orders/${encodeURIComponent(order.orderNumber)}`,
             search: `?token=${encodeURIComponent(token)}`,
           }}
-          className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-900 px-5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="inline-flex h-11 items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
         >
           View order
         </Link>
         <Link
           to="/products"
-          className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 px-5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:text-zinc-100"
+          className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 px-5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900 dark:text-slate-100"
         >
           Continue shopping
         </Link>

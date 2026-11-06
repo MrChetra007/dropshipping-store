@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { ButtonLink } from "@/components/ui/button-link";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { SmartImage } from "@/components/ui/smart-image";
 import {
   getShippingEstimates,
   getStoreSettings,
@@ -31,8 +30,26 @@ function deliveryWindow(rates: ShippingEstimate[]): string | null {
     return null;
   }
 
-  return `${minDays}–${maxDays} days`;
+  return `${minDays}-${maxDays} days`;
 }
+
+const mechanism = [
+  {
+    step: "01",
+    title: "Targeted recovery",
+    copy: "Focused devices for the places that carry the most tension through your day.",
+  },
+  {
+    step: "02",
+    title: "A consistent routine",
+    copy: "Easy, wearable sessions make it practical to build recovery into your day.",
+  },
+  {
+    step: "03",
+    title: "Everyday movement",
+    copy: "A few focused minutes can help you feel more prepared for the activities you enjoy.",
+  },
+];
 
 export function HomePage() {
   const settingsQuery = useQuery({
@@ -66,13 +83,14 @@ export function HomePage() {
   const shippingRates = shippingQuery.data ?? [];
 
   usePageMetadata({
-    title: settings?.name ?? "CJ Dropshipping Store",
-    description: "Storefront powered by CJ Dropshipping.",
+    title: "KinetiCore Labs",
+    description:
+      "Non-invasive recovery tech designed to support everyday movement from your living room.",
     canonical: "/",
   });
 
   if (settingsQuery.isLoading || featuredQuery.isLoading) {
-    return <PageSpinner label="Loading store…" />;
+    return <PageSpinner label="Loading store..." />;
   }
 
   const freeShippingCents = shippingRates.reduce<number | null>(
@@ -89,100 +107,143 @@ export function HomePage() {
   );
 
   const delivery = deliveryWindow(shippingRates);
-  const categoryTiles = categories.slice(0, 8);
+  const painPoints = categories.slice(0, 4);
+  const currency = settings?.currency ?? "USD";
 
   return (
     <main className="flex-1">
-      <section className="border-b border-zinc-200 bg-gradient-to-b from-zinc-50 to-white dark:border-zinc-800 dark:from-zinc-950 dark:to-zinc-900">
+      {/* Hero -------------------------------------------------------------- */}
+      <section className="border-b border-slate-200 bg-gradient-to-b from-white to-slate-50 dark:border-slate-800 dark:from-slate-950 dark:to-slate-900">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 sm:py-24 lg:grid-cols-[3fr_2fr] lg:items-center">
           <div className="space-y-6">
-            <p className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-              Ships to the US, UK &amp; more
+            <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full bg-cyan-500"
+              />
+              Non-invasive recovery tech
             </p>
-            <h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
-              {settings?.name ?? "CJ Store"}
+            <h1 className="max-w-2xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
+              Reclaim pain-free movement in{" "}
+              <span className="text-cyan-600 dark:text-cyan-400">
+                15 minutes a day.
+              </span>
             </h1>
-            <p className="max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-              Carefully selected products at fair prices, delivered to your
-              door. Every order is tracked from dispatch to delivery.
+            <p className="max-w-xl text-lg text-slate-600 dark:text-slate-400">
+              Non-invasive recovery tech engineered to soothe stubborn joints,
+              release deep muscular knots, and decompress chronic tension -
+              from your living room. No appointments, no clunky devices.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/products"
-                className="inline-flex h-12 items-center justify-center rounded-lg bg-zinc-900 px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                className="inline-flex h-12 items-center justify-center rounded-lg bg-slate-900 px-6 text-sm font-medium text-white transition-colors hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
               >
-                Shop all products
+                Shop Targeted Relief -&gt;
               </Link>
-              {categoryTiles[0] ? (
-                <Link
-                  to={`/categories/${categoryTiles[0].slug}`}
-                  className="inline-flex h-12 items-center justify-center rounded-lg border border-zinc-300 bg-white px-6 text-sm font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                >
-                  Browse {categoryTiles[0].name}
-                </Link>
-              ) : null}
+              <a
+                href="#pain-points"
+                className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-300 bg-white px-6 text-sm font-medium transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+              >
+                Find my pain point
+              </a>
             </div>
-            <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-500">
-              {delivery ? <li>Estimated delivery {delivery}</li> : null}
-              {freeShippingCents !== null ? (
-                <li>
-                  Free shipping over{" "}
-                  {formatCents(freeShippingCents, settings?.currency ?? "USD")}
-                </li>
-              ) : null}
-              <li>Tracked orders</li>
-            </ul>
+            <div className="space-y-2 pt-2">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                Built for active adults and desk workers.
+              </p>
+              <p className="text-xs uppercase tracking-widest text-slate-400">
+                60-day at-home trial | tracked delivery | direct support
+              </p>
+            </div>
           </div>
 
-          <div className="relative hidden aspect-square overflow-hidden rounded-2xl border border-zinc-200 bg-white lg:block dark:border-zinc-800 dark:bg-zinc-900">
-            {products[0]?.imageUrl ? (
-              <SmartImage
-                src={products[0].imageUrl}
-                alt={products[0].imageAlt ?? products[0].title}
-                priority
-                sizes="(min-width: 1024px) 40vw, 100vw"
-                className="object-cover"
+          <div
+            aria-hidden
+            className="relative hidden aspect-square overflow-hidden rounded-2xl bg-slate-900 lg:block"
+          >
+            <svg
+              viewBox="0 0 400 400"
+              className="absolute inset-0 h-full w-full"
+              fill="none"
+            >
+              {[36, 66, 96, 126, 156].map((r) => (
+                <circle
+                  key={r}
+                  cx="200"
+                  cy="200"
+                  r={r}
+                  stroke="#22d3ee"
+                  strokeOpacity={0.35 - r / 700}
+                  strokeWidth="1.5"
+                />
+              ))}
+              <circle
+                cx="200"
+                cy="200"
+                r="18"
+                fill="#22d3ee"
+                fillOpacity="0.9"
               />
-            ) : (
-              <div className="flex h-full items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-900 dark:to-zinc-800">
-                <span className="text-sm text-zinc-500">
-                  Add products in the admin to fill your storefront
-                </span>
-              </div>
-            )}
+              <circle
+                cx="200"
+                cy="200"
+                r="30"
+                stroke="#22d3ee"
+                strokeOpacity="0.6"
+                strokeWidth="2"
+              />
+            </svg>
+            <div className="absolute left-6 top-6 rounded-lg bg-slate-800/80 px-3 py-1.5 font-mono text-xs text-cyan-300 ring-1 ring-cyan-400/30">
+              660nm + 850nm
+            </div>
+            <div className="absolute bottom-6 right-6 rounded-lg bg-slate-800/80 px-3 py-1.5 font-mono text-xs text-cyan-300 ring-1 ring-cyan-400/30">
+              15 min / day
+            </div>
+            <div className="absolute bottom-6 left-6 rounded-lg bg-slate-800/80 px-3 py-1.5 font-mono text-xs text-slate-300 ring-1 ring-slate-600/50">
+              60-day trial
+            </div>
           </div>
         </div>
       </section>
 
-      {categoryTiles.length > 0 ? (
-        <section className="mx-auto w-full max-w-6xl px-6 py-14">
+      {/* Shop by pain point ------------------------------------------------ */}
+      {painPoints.length > 0 ? (
+        <section
+          id="pain-points"
+          className="mx-auto w-full max-w-6xl scroll-mt-24 px-6 py-16"
+        >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="space-y-1">
-              <h2 className="text-2xl font-semibold tracking-tight">
-                Shop by category
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                Shop by pain point
               </h2>
-              <p className="text-sm text-zinc-500">
-                Find what you need without the scroll.
+              <p className="text-sm text-slate-500">
+                You don&apos;t shop device names. Tell us where it hurts and
+                we&apos;ll target it.
               </p>
             </div>
           </div>
-          <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {categoryTiles.map((category) => (
+          <ul className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {painPoints.map((category, index) => (
               <li key={category.id}>
                 <Link
                   to={`/categories/${category.slug}`}
-                  className="group relative flex aspect-[4/3] items-end overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-4 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                  className="group flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-cyan-500/60 hover:bg-cyan-50/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-500/40 dark:hover:bg-slate-800"
                 >
-                  {category.imageUrl ? (
-                    <SmartImage
-                      src={category.imageUrl}
-                      alt=""
-                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-                      className="object-cover opacity-80 transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : null}
-                  <span className="relative rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-zinc-900 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-100">
-                    {category.name}
+                  <span className="font-mono text-xs font-medium text-cyan-600 dark:text-cyan-400">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="space-y-3 py-6">
+                    <p className="text-lg font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100">
+                      {category.name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Targeted relief program -&gt;
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium text-cyan-600 underline-offset-4 group-hover:underline dark:text-cyan-400">
+                    Shop relief -&gt;
                   </span>
                 </Link>
               </li>
@@ -191,14 +252,51 @@ export function HomePage() {
         </section>
       ) : null}
 
-      <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+      {/* Why it works ------------------------------------------------------ */}
+      <section className="border-y border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto w-full max-w-6xl px-6 py-16">
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
+              Clinical mechanism
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Why it works
+            </h2>
+            <p className="max-w-2xl text-sm text-slate-500">
+              A simple at-home routine designed to support the way you move
+              and recover.
+            </p>
+          </div>
+          <ol className="mt-8 grid gap-4 md:grid-cols-3">
+            {mechanism.map((item) => (
+              <li
+                key={item.step}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900"
+              >
+                <span className="font-mono text-sm font-semibold text-cyan-600 dark:text-cyan-400">
+                  {item.step}
+                </span>
+                <p className="mt-3 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                  {item.title}
+                </p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {item.copy}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Devices ----------------------------------------------------------- */}
+      <section className="mx-auto w-full max-w-6xl px-6 py-16">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              {featured.length > 0 ? "Featured products" : "New arrivals"}
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Targeted relief devices
             </h2>
-            <p className="text-sm text-zinc-500">
-              Hand-picked products our customers love.
+            <p className="text-sm text-slate-500">
+              Clinical-grade engineering. No gadgets, no gimmicks.
             </p>
           </div>
           <ButtonLink to="/products" variant="secondary" size="sm">
@@ -208,30 +306,37 @@ export function HomePage() {
         <div className="mt-6">
           <ProductGrid
             products={products}
-            emptyMessage="No products published yet. Check back soon."
+            emptyMessage="New devices are being added - check back shortly."
           />
         </div>
       </section>
 
-      <section className="border-t border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/40">
-        <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-12 sm:grid-cols-3">
+      {/* Trust strip -------------------------------------------------------- */}
+      <section className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
-            <p className="font-medium">Tracked delivery</p>
-            <p className="text-sm text-zinc-500">
-              {delivery
-                ? `Orders typically arrive in ${delivery}.`
-                : "Tracking is added as soon as your parcel ships."}
+            <p className="font-medium">60-day guarantee</p>
+            <p className="text-sm text-slate-500">
+              Walk, climb stairs or run pain-free - or get a 100% refund.
             </p>
           </div>
           <div className="space-y-1">
-            <p className="font-medium">Secure checkout</p>
-            <p className="text-sm text-zinc-500">
-              Your payment details are handled by our payment provider.
+            <p className="font-medium">Non-invasive recovery</p>
+            <p className="text-sm text-slate-500">
+              Recovery technology designed for daily at-home routines.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-medium">Free tracked shipping</p>
+            <p className="text-sm text-slate-500">
+              {freeShippingCents !== null && delivery
+                ? `Free over ${formatCents(freeShippingCents, currency)} | arrives in ${delivery} | fully tracked.`
+                : "Every order is tracked from dispatch to your door."}
             </p>
           </div>
           <div className="space-y-1">
             <p className="font-medium">Real support</p>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-slate-500">
               {settings?.support_email ? (
                 <>
                   Questions? Email{" "}

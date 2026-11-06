@@ -10,7 +10,7 @@ export function AdminDashboardPage() {
   });
 
   usePageMetadata({
-    title: "Admin dashboard | CJ Dropshipping Store",
+    title: "Admin dashboard | KinetiCore Labs",
   });
 
   return (

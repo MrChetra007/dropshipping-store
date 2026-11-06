@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          id: string;
+          order_id: string | null;
+          order_number: string;
+          type: Database["public"]["Enums"]["admin_notification_type"];
+          title: string;
+          body: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id?: string | null;
+          order_number: string;
+          type: Database["public"]["Enums"]["admin_notification_type"];
+          title: string;
+          body?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string | null;
+          order_number?: string;
+          type?: Database["public"]["Enums"]["admin_notification_type"];
+          title?: string;
+          body?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "admin_notifications_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           id: string;
@@ -969,6 +1010,10 @@ export type Database = {
       };
     };
     Enums: {
+      admin_notification_type:
+        | "order_created"
+        | "order_paid"
+        | "fulfillment_failed";
       user_role: "customer" | "admin";
       product_status: "draft" | "active" | "archived";
       order_status:

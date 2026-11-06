@@ -59,12 +59,12 @@ export function Pagination({
         <Link
           to={hrefFor(page - 1)}
           rel="prev"
-          className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          className="inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
         >
           Previous
         </Link>
       ) : (
-        <span className="inline-flex h-9 items-center rounded-md border border-zinc-200 px-3 text-sm text-zinc-400 dark:border-zinc-800">
+        <span className="inline-flex h-9 items-center rounded-md border border-slate-200 px-3 text-sm text-slate-400 dark:border-slate-800">
           Previous
         </span>
       )}
@@ -73,11 +73,11 @@ export function Pagination({
         <>
           <Link
             to={hrefFor(1)}
-            className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-zinc-300 px-2 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-slate-300 px-2 text-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
           >
             1
           </Link>
-          {pages[0] > 2 ? <span className="px-1 text-zinc-400">…</span> : null}
+          {pages[0] > 2 ? <span className="px-1 text-slate-400">…</span> : null}
         </>
       ) : null}
 
@@ -89,8 +89,8 @@ export function Pagination({
           className={cn(
             "inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-sm transition-colors",
             item === page
-              ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-              : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900",
+              ? "border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
+              : "border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900",
           )}
         >
           {item}
@@ -100,11 +100,11 @@ export function Pagination({
       {pages[pages.length - 1] < pageCount ? (
         <>
           {pages[pages.length - 1] < pageCount - 1 ? (
-            <span className="px-1 text-zinc-400">…</span>
+            <span className="px-1 text-slate-400">…</span>
           ) : null}
           <Link
             to={hrefFor(pageCount)}
-            className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-zinc-300 px-2 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-slate-300 px-2 text-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
           >
             {pageCount}
           </Link>
@@ -115,12 +115,12 @@ export function Pagination({
         <Link
           to={hrefFor(page + 1)}
           rel="next"
-          className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          className="inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
         >
           Next
         </Link>
       ) : (
-        <span className="inline-flex h-9 items-center rounded-md border border-zinc-200 px-3 text-sm text-zinc-400 dark:border-zinc-800">
+        <span className="inline-flex h-9 items-center rounded-md border border-slate-200 px-3 text-sm text-slate-400 dark:border-slate-800">
           Next
         </span>
       )}
